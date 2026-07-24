@@ -1,59 +1,17 @@
 import { useState } from "react";
 import {
-  Upload, BookOpen, X, ChevronDown, Menu,
-  Download, Eye, Lock, FileText, Trash2, Moon, Sun, Languages,
+  Upload, BookOpen, ChevronDown, Menu,
+  Eye, Lock, FileText, Trash2, Moon, Sun, Languages,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { getMagazines, deleteMagazine, type StoredMagazine } from "../magazineStore";
-import { useTheme, useLang, useAuth } from "../AppContext";
+import { useTheme, useLang, useAuth, CATEGORY_OPTIONS } from "../AppContext";
+import { publishedIssues } from "../issueCatalog";
 
 const member1 = new URL("../../imports/PHOTO-2026-07-17-20-56-35.jpg", import.meta.url).href;
 const member2 = new URL("../../imports/Untitled-11.jpg", import.meta.url).href;
 
-interface Issue {
-  id: number;
-  title: string;
-  subtitle: string;
-  year: string;
-  issue: string;
-  cover: string;
-  theme: string;
-  pages: number;
-  fileUrl?: string;
-}
-
-const issues: Issue[] = [
-  {
-    id: 1,
-    title: "वसंत विशेषांक",
-    subtitle: "Spring Special Edition",
-    year: "2024",
-    issue: "Vol. 12",
-    cover: "https://images.unsplash.com/photo-1516912481808-3406841bd33c?w=400&h=540&fit=crop&auto=format",
-    theme: "Nature & Poetry",
-    pages: 48,
-  },
-  {
-    id: 2,
-    title: "दीपावली अंक",
-    subtitle: "Diwali Edition",
-    year: "2023",
-    issue: "Vol. 11",
-    cover: "https://images.unsplash.com/photo-1605289982774-9a6fef564df8?w=400&h=540&fit=crop&auto=format",
-    theme: "Festivals & Tradition",
-    pages: 56,
-  },
-  {
-    id: 3,
-    title: "स्वतंत्रता अंक",
-    subtitle: "Independence Edition",
-    year: "2023",
-    issue: "Vol. 10",
-    cover: "https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?w=400&h=540&fit=crop&auto=format",
-    theme: "History & Pride",
-    pages: 64,
-  },
-];
+const issues = publishedIssues;
 
 // ── NavBar ─────────────────────────────────────────────────────────────────
 
@@ -64,7 +22,11 @@ function NavBar() {
   const { lang, toggleLang, t } = useLang();
   const { isLoggedIn, logout } = useAuth();
 
-  const navLinks = [t("nav.issues"), t("nav.writers"), t("nav.contact")];
+  const navLinks = [
+    { label: t("nav.issues"), href: "#issues" },
+    { label: t("nav.writers"), href: "#contributors" },
+    { label: t("nav.contact"), href: "#contact" },
+  ];
 
   const handleSignOut = () => {
     logout();
@@ -92,8 +54,8 @@ function NavBar() {
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-6">
           {navLinks.map((item) => (
-            <a key={item} href="#" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide font-body">
-              {item}
+            <a key={item.href} href={item.href} className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide font-body">
+              {item.label}
             </a>
           ))}
 
@@ -161,7 +123,7 @@ function NavBar() {
       {menuOpen && (
         <div id="mobile-menu" role="menu" className="md:hidden border-t border-border bg-background px-5 py-4 flex flex-col gap-4">
           {navLinks.map((item) => (
-            <a key={item} href="#" className="text-foreground text-sm font-body">{item}</a>
+            <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="text-foreground text-sm font-body">{item.label}</a>
           ))}
           {isLoggedIn ? (
             <>
@@ -223,9 +185,9 @@ function Hero() {
             {t("hero.desc")}
           </p>
           <div className="flex items-center gap-4 flex-wrap">
-            <button className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 hover:bg-primary/90 transition-colors text-sm font-body">
+            <a href="#issues" className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 hover:bg-primary/90 transition-colors text-sm font-body">
               <BookOpen size={15} /> {t("hero.cta")}
-            </button>
+            </a>
           </div>
         </div>
 
@@ -255,56 +217,58 @@ function Hero() {
   );
 }
 
-// ── Issue Modal ────────────────────────────────────────────────────────────
-
-function IssueModal({ issue, onClose }: { issue: Issue; onClose: () => void }) {
+function LatestIssue() {
   const { t } = useLang();
+  const uploaded = getMagazines();
+  const latest = uploaded[0];
+  const cover = latest?.coverUrl ?? issues[0].cover;
+  const title = latest?.title ?? issues[0].title;
+  const subtitle = latest?.subtitle ?? issues[0].subtitle;
+  const category = latest?.category ?? issues[0].category;
+  const volume = latest?.volume ?? issues[0].volume;
+  const year = latest?.year ?? issues[0].year;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="relative bg-card border border-border rounded-sm shadow-2xl max-w-lg w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors">
-          <X size={14} />
-        </button>
-        <div className="relative h-56 bg-muted overflow-hidden">
-          <img src={issue.cover} alt={issue.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-          <div className="absolute bottom-5 left-5 right-12">
-            <span className="text-white/70 text-xs tracking-widest uppercase font-body">{issue.issue} · {issue.year}</span>
-            <h3 id="issue-title" className="text-white text-2xl mt-1 font-display font-bold">{issue.title}</h3>
-            <p className="text-white/80 text-sm mt-0.5 font-body">{issue.subtitle}</p>
+    <section className="py-16 bg-primary text-primary-foreground">
+      <div className="max-w-6xl mx-auto px-5 grid md:grid-cols-[180px_1fr] gap-8 items-center">
+        <img src={cover} alt={title} className="w-36 md:w-44 aspect-[3/4] object-cover shadow-2xl mx-auto md:mx-0" />
+        <div className="text-center md:text-left">
+          <p className="text-primary-foreground/70 text-xs tracking-[0.2em] uppercase font-body mb-3">{t("issues.latest")}</p>
+          <h2 className="text-3xl md:text-4xl font-display font-bold mb-2">{title}</h2>
+          {subtitle && <p className="text-primary-foreground/75 font-body mb-5">{subtitle}</p>}
+          <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-6 text-xs font-body">
+            <span className="bg-white/10 px-3 py-1.5">{category}</span>
+            <span className="bg-white/10 px-3 py-1.5">{volume} · {year}</span>
           </div>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            {[
-              { label: t("modal.theme"),  value: issue.theme },
-              { label: t("modal.pages"),  value: `${issue.pages} ${t("modal.pages.suffix")}` },
-              { label: t("modal.volume"), value: issue.issue },
-            ].map(({ label, value }) => (
-              <div key={label} className="bg-secondary rounded-sm p-3 text-center">
-                <div className="text-xs text-muted-foreground mb-0.5 font-body">{label}</div>
-                <div className="text-sm font-medium text-foreground font-body">{value}</div>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-3">
-            {issue.fileUrl ? (
-              <a href={issue.fileUrl} download className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 text-sm hover:bg-primary/90 transition-colors rounded-sm font-body">
-                <Download size={14} /> {t("modal.download")}
-              </a>
-            ) : (
-              <button disabled className="flex-1 flex items-center justify-center gap-2 bg-muted text-muted-foreground py-2.5 text-sm rounded-sm cursor-not-allowed font-body">
-                <Download size={14} /> {t("modal.nopdf")}
-              </button>
-            )}
-            <button onClick={onClose} className="px-4 py-2.5 border border-border text-sm text-foreground hover:bg-secondary transition-colors rounded-sm font-body">
-              {t("modal.close")}
-            </button>
-          </div>
+          <a href="#issues" className="inline-flex items-center gap-2 border border-primary-foreground/40 px-4 py-2.5 text-sm hover:bg-white/10 transition-colors font-body">
+            <BookOpen size={14} /> {t("issues.latest_cta")}
+          </a>
         </div>
       </div>
-    </div>
+    </section>
+  );
+}
+
+function CategoriesSection({ activeCategory, onSelect }: { activeCategory: string; onSelect: (category: string) => void }) {
+  const { lang, t } = useLang();
+  const selectCategory = (category: string) => {
+    onSelect(category);
+    document.getElementById("issues")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  return (
+    <section className="py-14 border-t border-border">
+      <div className="max-w-6xl mx-auto px-5">
+        <h2 className="text-center text-2xl text-foreground font-display font-bold mb-7">{t("issues.categories")}</h2>
+        <div className="flex flex-wrap justify-center gap-2.5">
+          <button type="button" onClick={() => selectCategory("")} className={`border px-4 py-2 text-sm transition-colors font-body ${!activeCategory ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-accent hover:text-accent"}`}>All issues</button>
+          {CATEGORY_OPTIONS.map((category) => (
+            <button type="button" key={category.en} onClick={() => selectCategory(category.en)} className={`border px-4 py-2 text-sm transition-colors font-body ${activeCategory === category.en ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-accent hover:text-accent"}`}>
+              {lang === "hi" ? category.hi : category.en}
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -312,6 +276,7 @@ function IssueModal({ issue, onClose }: { issue: Issue; onClose: () => void }) {
 
 function UploadedCard({ mag, onDelete }: { mag: StoredMagazine; onDelete: () => void }) {
   const { t } = useLang();
+  const navigate = useNavigate();
   const fileSizeLabel =
     mag.fileSize < 1024 * 1024
       ? `${(mag.fileSize / 1024).toFixed(0)} KB`
@@ -360,13 +325,14 @@ function UploadedCard({ mag, onDelete }: { mag: StoredMagazine; onDelete: () => 
             {new Date(mag.publishDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
           </p>
         )}
-        {mag.theme && <p className="text-sm text-foreground font-body mt-1 mb-2">{t("card.theme")}: {mag.theme}</p>}
+        {mag.category && <p className="text-sm text-foreground font-body mt-1 mb-2">{t("issues.category")}: {mag.category}</p>}
         <div className="flex items-center gap-2 text-xs text-muted-foreground font-body border-t border-border pt-2 mt-2">
           <FileText size={11} className="shrink-0" />
           <span className="truncate">{mag.fileName}</span>
           <span className="shrink-0 ml-auto">{fileSizeLabel}</span>
         </div>
         <p className="text-[10px] text-muted-foreground font-body mt-1">{t("card.uploaded")} {uploadedDate}</p>
+        <button type="button" onClick={() => navigate(`/issues/${mag.id}`)} className="mt-3 text-sm text-accent hover:underline font-body">View issue</button>
       </div>
     </article>
   );
@@ -374,9 +340,9 @@ function UploadedCard({ mag, onDelete }: { mag: StoredMagazine; onDelete: () => 
 
 // ── Issues section ─────────────────────────────────────────────────────────
 
-function IssuesSection() {
+function IssuesSection({ activeCategory }: { activeCategory: string }) {
   const { t } = useLang();
-  const [selected, setSelected] = useState<Issue | null>(null);
+  const navigate = useNavigate();
   const [uploaded, setUploaded] = useState<StoredMagazine[]>(() => getMagazines());
 
   const handleDelete = (id: string) => {
@@ -385,9 +351,11 @@ function IssuesSection() {
   };
 
   const totalCount = issues.length + uploaded.length;
+  const filteredUploaded = activeCategory ? uploaded.filter((mag) => mag.category === activeCategory) : uploaded;
+  const filteredIssues = activeCategory ? issues.filter((issue) => issue.category === activeCategory) : issues;
 
   return (
-    <section className="py-20 border-t border-border">
+    <section id="issues" className="py-20 border-t border-border scroll-mt-20">
       <div className="max-w-6xl mx-auto px-5">
         <div className="flex items-end justify-between mb-12">
           <div>
@@ -397,11 +365,11 @@ function IssuesSection() {
           <span className="hidden md:block text-muted-foreground text-sm font-body">{totalCount} {t("issues.count")}</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-          {uploaded.map((mag) => (
+          {filteredUploaded.map((mag) => (
             <UploadedCard key={mag.id} mag={mag} onDelete={() => handleDelete(mag.id)} />
           ))}
-          {issues.map((issue) => (
-            <article key={issue.id} className="group cursor-pointer" onClick={() => setSelected(issue)}>
+          {filteredIssues.map((issue) => (
+            <button type="button" key={issue.id} className="group text-left" onClick={() => navigate(`/issues/${issue.id}`)}>
               <div className="relative overflow-hidden rounded-sm bg-muted mb-4 shadow-md" style={{ aspectRatio: "3/4" }}>
                 <img src={issue.cover} alt={issue.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -411,18 +379,18 @@ function IssuesSection() {
                   </div>
                 </div>
                 <div className="absolute bottom-4 left-4 right-4">
-                  <span className="text-white/80 text-xs tracking-widest uppercase font-body">{issue.issue} · {issue.year}</span>
+                  <span className="text-white/80 text-xs tracking-widest uppercase font-body">{issue.volume} · {issue.year}</span>
                   <h3 className="text-white text-xl mt-1 font-display font-bold">{issue.title}</h3>
                 </div>
                 <div className="absolute top-3 right-3 bg-white/95 text-xs px-2 py-1 rounded-sm text-foreground font-body">{issue.pages}p</div>
               </div>
               <div className="text-muted-foreground text-xs uppercase tracking-widest mb-1 font-body">{issue.subtitle}</div>
-              <div className="text-sm text-foreground font-body">{t("issues.theme")}: {issue.theme}</div>
-            </article>
+              <div className="text-sm text-foreground font-body">{t("issues.category")}: {issue.category}</div>
+            </button>
           ))}
         </div>
+        {filteredUploaded.length + filteredIssues.length === 0 && <p className="py-10 text-center text-muted-foreground font-body">No issues are available in this category yet.</p>}
       </div>
-      {selected && <IssueModal issue={selected} onClose={() => setSelected(null)} />}
     </section>
   );
 }
@@ -465,7 +433,7 @@ function ContributorsSection() {
     { name: "Member", avatarSrc: member2 },
   ];
   return (
-    <section className="py-20 border-t border-border">
+    <section id="contributors" className="py-20 border-t border-border scroll-mt-20">
       <div className="max-w-6xl mx-auto px-5">
         <div className="text-center mb-12">
           <div className="text-accent text-xs tracking-[0.2em] uppercase mb-2 font-medium font-body">— {t("team.eyebrow")}</div>
@@ -527,7 +495,7 @@ function FaqSection() {
 function Footer() {
   const { t } = useLang();
   return (
-    <footer className="border-t border-border py-10">
+    <footer id="contact" className="border-t border-border py-10 scroll-mt-20">
       <div className="max-w-6xl mx-auto px-5 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center">
@@ -548,11 +516,14 @@ function Footer() {
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const [activeCategory, setActiveCategory] = useState("");
   return (
     <div className="min-h-screen bg-background text-foreground">
       <NavBar />
       <Hero />
-      <IssuesSection />
+      <LatestIssue />
+      <CategoriesSection activeCategory={activeCategory} onSelect={setActiveCategory} />
+      <IssuesSection activeCategory={activeCategory} />
       <SignInToBanner />
       <ContributorsSection />
       <FaqSection />
