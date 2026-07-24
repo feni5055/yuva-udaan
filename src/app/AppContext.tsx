@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { Languages, Moon, Sun } from "lucide-react";
+import { supabase } from "./supabase";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -8,13 +10,13 @@ type Lang  = "en" | "hi";
 
 interface ThemeCtx { theme: Theme; toggleTheme: () => void; }
 interface LangCtx  { lang: Lang; toggleLang: () => void; t: (key: string) => string; }
-interface AuthCtx  { isLoggedIn: boolean; login: () => void; logout: () => void; }
+interface AuthCtx  { isLoggedIn: boolean; authReady: boolean; user: User | null; refreshAuth: () => Promise<void>; logout: () => Promise<void>; }
 
 // ── Contexts ───────────────────────────────────────────────────────────────
 
 const ThemeContext = createContext<ThemeCtx>({ theme: "light", toggleTheme: () => {} });
 const LangContext  = createContext<LangCtx>({ lang: "en", toggleLang: () => {}, t: (k) => k });
-const AuthContext  = createContext<AuthCtx>({ isLoggedIn: false, login: () => {}, logout: () => {} });
+const AuthContext  = createContext<AuthCtx>({ isLoggedIn: false, authReady: false, user: null, refreshAuth: async () => {}, logout: async () => {} });
 
 export function useTheme() { return useContext(ThemeContext); }
 export function useLang()  { return useContext(LangContext); }
@@ -44,6 +46,10 @@ const T: Record<string, Record<Lang, string>> = {
   // ── Issues section ──
   "issues.eyebrow":     { en: "Published Issues",       hi: "प्रकाशित अंक" },
   "issues.heading":     { en: "Past Issues",            hi: "पिछले अंक" },
+  "issues.categories":  { en: "Browse by Category",     hi: "श्रेणी के अनुसार देखें" },
+  "issues.latest":      { en: "Latest Issue",           hi: "नवीनतम अंक" },
+  "issues.latest_cta":  { en: "Explore the archive",    hi: "संग्रह देखें" },
+  "issues.category":    { en: "Category",               hi: "श्रेणी" },
   "issues.count":       { en: "issues published",       hi: "अंक प्रकाशित" },
   "issues.view":        { en: "View Issue",             hi: "अंक देखें" },
   "issues.theme":       { en: "Theme",                  hi: "विषय" },
@@ -183,6 +189,9 @@ const T: Record<string, Record<Lang, string>> = {
   "upload.year":          { en: "Year",                        hi: "वर्ष" },
   "upload.pub_date":      { en: "Publication Date",            hi: "प्रकाशन तिथि" },
   "upload.theme":         { en: "Theme / Topic",               hi: "विषय / टॉपिक" },
+  "upload.category":      { en: "Category",                    hi: "श्रेणी" },
+  "upload.category_ph":   { en: "Choose a category…",          hi: "श्रेणी चुनें…" },
+  "upload.category_required": { en: "Choose a category before publishing.", hi: "प्रकाशित करने से पहले एक श्रेणी चुनें।" },
   "upload.theme_ph":      { en: "Select a theme…",             hi: "विषय चुनें…" },
   "upload.theme_other":   { en: "Other (specify below)",       hi: "अन्य (नीचे लिखें)" },
   "upload.theme_custom":  { en: "Custom theme",                hi: "कस्टम विषय" },
@@ -210,7 +219,7 @@ function translate(key: string, lang: Lang): string {
 
 // ── Theme options ──────────────────────────────────────────────────────────
 
-export const THEME_OPTIONS: { en: string; hi: string }[] = [
+export const CATEGORY_OPTIONS: { en: string; hi: string }[] = [
   { en: "Poetry",                   hi: "कविता" },
   { en: "Short Story",              hi: "लघुकथा" },
   { en: "Essay",                    hi: "निबंध" },
@@ -236,6 +245,9 @@ export const THEME_OPTIONS: { en: string; hi: string }[] = [
   { en: "Women & Society",          hi: "महिला और समाज" },
   { en: "Language & Linguistics",   hi: "भाषा और भाषाविज्ञान" },
 ];
+
+// Kept as an alias so existing components continue to use the same category list.
+export const THEME_OPTIONS = CATEGORY_OPTIONS;
 
 // ── Shared UI components ───────────────────────────────────────────────────
 
@@ -275,9 +287,8 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<Lang>(() =>
     (localStorage.getItem("hc_lang") as Lang | null) ?? "en"
   );
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() =>
-    localStorage.getItem("hc_auth") === "1"
-  );
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -292,13 +303,30 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   });
   const t = (key: string) => translate(key, lang);
 
-  const login  = () => { localStorage.setItem("hc_auth", "1"); setIsLoggedIn(true); };
-  const logout = () => { localStorage.removeItem("hc_auth"); setIsLoggedIn(false); };
+  const refreshAuth = async () => {
+    const { data } = await supabase.auth.getSession();
+    setUser(data.session?.user ?? null);
+    setAuthReady(true);
+  };
+
+  useEffect(() => {
+    void refreshAuth();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthReady(true);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       <LangContext.Provider value={{ lang, toggleLang, t }}>
-        <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+        <AuthContext.Provider value={{ isLoggedIn: Boolean(user), authReady, user, refreshAuth, logout }}>
           {children}
         </AuthContext.Provider>
       </LangContext.Provider>
