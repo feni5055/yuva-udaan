@@ -124,6 +124,7 @@ function NavBar() {
           {/* Language toggle */}
           <button
             onClick={toggleLang}
+            aria-label={lang === "en" ? "Switch to Hindi" : "Switch to English"}
             title={lang === "en" ? "Switch to Hindi" : "Switch to English"}
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm font-body px-2 py-1.5 rounded-sm hover:bg-secondary"
           >
@@ -134,7 +135,9 @@ function NavBar() {
           {/* Dark mode toggle */}
           <button
             onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-pressed={theme === "dark"}
             className="w-8 h-8 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
@@ -143,20 +146,20 @@ function NavBar() {
 
         {/* Mobile hamburger */}
         <div className="md:hidden flex items-center gap-2">
-          <button onClick={toggleLang} className="text-muted-foreground hover:text-foreground p-1.5 font-body text-xs font-semibold">
+          <button onClick={toggleLang} aria-label={lang === "en" ? "Switch to Hindi" : "Switch to English"} className="text-muted-foreground hover:text-foreground p-1.5 font-body text-xs font-semibold">
             {lang === "en" ? "हिं" : "EN"}
           </button>
-          <button onClick={toggleTheme} className="text-muted-foreground hover:text-foreground p-1.5">
+          <button onClick={toggleTheme} aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-pressed={theme === "dark"} className="text-muted-foreground hover:text-foreground p-1.5">
             {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <button className="text-foreground p-1" onClick={() => setMenuOpen(!menuOpen)}>
+          <button id="mobile-menu-button" aria-label="Toggle navigation menu" aria-expanded={menuOpen} aria-controls="mobile-menu" className="text-foreground p-1" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
       </div>
 
       {menuOpen && (
-        <div className="md:hidden border-t border-border bg-background px-5 py-4 flex flex-col gap-4">
+        <div id="mobile-menu" role="menu" className="md:hidden border-t border-border bg-background px-5 py-4 flex flex-col gap-4">
           {navLinks.map((item) => (
             <a key={item} href="#" className="text-foreground text-sm font-body">{item}</a>
           ))}
@@ -231,10 +234,10 @@ function Hero() {
           <div className="absolute -bottom-4 -left-4 w-48 h-64 bg-primary/8 rounded-sm" />
           <div className="relative flex gap-4 justify-center">
             <div className="w-40 h-56 overflow-hidden shadow-xl rounded-sm mt-8 bg-muted">
-              <img src={issues[0].cover} alt={issues[0].title} className="w-full h-full object-cover" />
+              <img src={issues[0].cover} alt={issues[0].title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
             <div className="w-40 h-56 overflow-hidden shadow-xl rounded-sm bg-muted">
-              <img src={issues[1].cover} alt={issues[1].title} className="w-full h-full object-cover" />
+              <img src={issues[1].cover} alt={issues[1].title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
           </div>
         </div>
@@ -257,18 +260,18 @@ function Hero() {
 function IssueModal({ issue, onClose }: { issue: Issue; onClose: () => void }) {
   const { t } = useLang();
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="relative bg-card border border-border rounded-sm shadow-2xl max-w-lg w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors">
           <X size={14} />
         </button>
         <div className="relative h-56 bg-muted overflow-hidden">
-          <img src={issue.cover} alt={issue.title} className="w-full h-full object-cover" />
+          <img src={issue.cover} alt={issue.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <div className="absolute bottom-5 left-5 right-12">
             <span className="text-white/70 text-xs tracking-widest uppercase font-body">{issue.issue} · {issue.year}</span>
-            <h3 className="text-white text-2xl mt-1 font-display font-bold">{issue.title}</h3>
+            <h3 id="issue-title" className="text-white text-2xl mt-1 font-display font-bold">{issue.title}</h3>
             <p className="text-white/80 text-sm mt-0.5 font-body">{issue.subtitle}</p>
           </div>
         </div>
@@ -319,7 +322,7 @@ function UploadedCard({ mag, onDelete }: { mag: StoredMagazine; onDelete: () => 
     <article className="group relative border border-border rounded-sm bg-card overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       <div className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-secondary to-muted flex items-center justify-center" style={{ aspectRatio: "3/4" }}>
         {mag.coverUrl ? (
-          <img src={mag.coverUrl} alt={mag.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          <img src={mag.coverUrl} alt={mag.title} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
           <div className="text-center px-4 z-10">
             <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -338,7 +341,8 @@ function UploadedCard({ mag, onDelete }: { mag: StoredMagazine; onDelete: () => 
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           className="absolute top-3 right-3 w-7 h-7 bg-black/40 hover:bg-destructive text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10"
-          title="Remove"
+          title="Remove magazine"
+          aria-label="Remove magazine"
         >
           <Trash2 size={12} />
         </button>
