@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { BookOpen, ArrowLeft, User, Mail, Lock, Eye, EyeOff, CheckCircle } from "lucide-react";
 import { useLang, LangToggle, ThemeToggle } from "../AppContext";
-import { registerMember, getMembers } from "../magazineStore";
+import { supabase } from "../supabase";
 
 function PasswordStrength({ password }: { password: string }) {
   const { t } = useLang();
@@ -35,7 +35,7 @@ function PasswordStrength({ password }: { password: string }) {
 
 export default function SignUp() {
   const navigate = useNavigate();
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -59,23 +59,25 @@ export default function SignUp() {
     if (!form.confirm) e.confirm = t("signup.err_confirm");
     else if (form.confirm !== form.password) e.confirm = t("signup.err_confirm2");
     if (!agreed) e.agreed = t("signup.err_terms");
-    if (form.email && !e.email) {
-      const exists = getMembers().some((m) => m.email.toLowerCase() === form.email.toLowerCase().trim());
-      if (exists) e.email = lang === "en" ? "An account with this email already exists." : "इस ईमेल से पहले से खाता मौजूद है।";
-    }
     return e;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setSubmitting(true);
-    setTimeout(() => {
-      registerMember({ name: form.name, email: form.email, password: form.password });
-      setSubmitting(false);
-      setDone(true);
-    }, 1500);
+    const { error } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: { data: { full_name: form.name }, emailRedirectTo: window.location.origin },
+    });
+    setSubmitting(false);
+    if (error) {
+      setErrors({ email: error.message });
+      return;
+    }
+    setDone(true);
   };
 
   if (done) {
