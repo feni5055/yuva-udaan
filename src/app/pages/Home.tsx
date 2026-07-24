@@ -433,19 +433,24 @@ function SignInToBanner() {
   const navigate = useNavigate();
   const { t } = useLang();
   return (
-    <section className="py-16 bg-secondary border-t border-border">
+    <section className="py-16 bg-secondary/20 border-t border-border">
       <div className="max-w-2xl mx-auto px-5 text-center">
-        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-5">
-          <Lock size={20} className="text-primary" />
+        <div className="rounded-lg p-8 md:p-12 bg-secondary/95 shadow-lg">
+          <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-5 ring-1 ring-border">
+            <Lock size={20} className="text-primary" aria-hidden="true" />
+          </div>
+          <h2 id="banner-heading" className="text-2xl text-foreground mb-2 font-display font-bold">{t("banner.heading")}</h2>
+          <p id="banner-desc" className="text-muted-foreground text-sm leading-relaxed mb-6 font-body">{t("banner.desc")}</p>
+          <button
+            onClick={() => navigate("/login")}
+            aria-labelledby="banner-heading"
+            aria-describedby="banner-desc"
+            className="inline-flex items-center gap-3 bg-primary text-primary-foreground px-6 py-3 text-sm hover:bg-primary/95 transition-colors rounded-md font-body shadow-sm focus-visible:outline-none"
+          >
+            <Lock size={14} aria-hidden="true" />
+            <span>{t("banner.cta")}</span>
+          </button>
         </div>
-        <h2 className="text-2xl text-foreground mb-2 font-display font-bold">{t("banner.heading")}</h2>
-        <p className="text-muted-foreground text-sm leading-relaxed mb-6 font-body">{t("banner.desc")}</p>
-        <button
-          onClick={() => navigate("/login")}
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-7 py-3 text-sm hover:bg-primary/90 transition-colors rounded-sm font-body"
-        >
-          {t("banner.cta")}
-        </button>
       </div>
     </section>
   );
