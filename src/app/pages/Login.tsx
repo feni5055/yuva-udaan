@@ -2,36 +2,35 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { BookOpen, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useLang, LangToggle, ThemeToggle, useAuth } from "../AppContext";
-import { findMember } from "../magazineStore";
+import { supabase } from "../supabase";
 
 export default function Login() {
   const navigate = useNavigate();
   const { t } = useLang();
-  const { login } = useAuth();
+  const { refreshAuth } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    setTimeout(() => {
+    if (!email || !password) {
       setLoading(false);
-      if (!email || !password) {
-        setError(t("login.error"));
-        return;
-      }
-      const member = findMember(email, password);
-      if (member) {
-        login();
-        navigate("/upload");
-      } else {
-        setError(t("login.error_invalid"));
-      }
-    }, 1200);
+      setError(t("login.error"));
+      return;
+    }
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (signInError) {
+      setError(signInError.message);
+      return;
+    }
+    await refreshAuth();
+    navigate("/upload");
   };
 
   return (
