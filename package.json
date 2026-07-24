@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "server": "node server/index.js"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -63,7 +64,12 @@
     "tailwind-merge": "3.2.0",
     "tw-animate-css": "1.3.8",
     "vaul": "1.1.2",
-    "@figma/astraui-kit": "0.1.3"
+    "@figma/astraui-kit": "0.1.3",
+    "express": "^4.18.2",
+    "cookie-parser": "^1.4.6",
+    "jsonwebtoken": "^9.0.0",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
