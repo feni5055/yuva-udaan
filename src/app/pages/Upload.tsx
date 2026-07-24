@@ -119,16 +119,16 @@ function CoverPicker({ coverUrl, onChange }: { coverUrl: string | null; onChange
 
 // ── Theme dropdown ─────────────────────────────────────────────────────────
 
-function ThemeSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function CategorySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { lang, t } = useLang();
   const [open, setOpen] = useState(false);
   const isOther = value === "__other__";
-  const [custom, setCustom] = useState("");
 
   const selectedOption = THEME_OPTIONS.find((o) => o.en === value);
+  const isCustom = Boolean(value) && !selectedOption;
   const displayLabel = selectedOption
     ? (lang === "hi" ? selectedOption.hi : selectedOption.en)
-    : isOther
+    : isCustom
     ? t("upload.theme_other")
     : "";
 
@@ -145,7 +145,7 @@ function ThemeSelect({ value, onChange }: { value: string; onChange: (v: string)
           onClick={() => setOpen(!open)}
           className={`w-full bg-input-background border border-border px-3 py-2.5 text-sm text-left flex items-center justify-between rounded-sm font-body focus:outline-none focus:ring-1 focus:ring-ring ${!value ? "text-muted-foreground" : "text-foreground"}`}
         >
-          <span>{displayLabel || t("upload.theme_ph")}</span>
+          <span>{displayLabel || t("upload.category_ph")}</span>
           <ChevronDown size={14} className={`text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
 
@@ -175,16 +175,21 @@ function ThemeSelect({ value, onChange }: { value: string; onChange: (v: string)
         )}
       </div>
 
-      {isOther && (
-        <input
-          value={custom}
-          onChange={(e) => setCustom(e.target.value)}
-          placeholder={t("upload.theme_custom_ph")}
-          className="w-full bg-input-background border border-border px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring rounded-sm font-body"
-          onBlur={() => { if (custom.trim()) onChange(custom.trim()); }}
-        />
-      )}
+      {isCustom && <CustomCategoryInput initialValue={isOther ? "" : value} onChange={onChange} />}
     </div>
+  );
+}
+
+function CustomCategoryInput({ initialValue, onChange }: { initialValue: string; onChange: (value: string) => void }) {
+  const { t } = useLang();
+  const [custom, setCustom] = useState(initialValue);
+  return (
+    <input
+      value={custom}
+      onChange={(e) => { const next = e.target.value; setCustom(next); onChange(next.trim() || "__other__"); }}
+      placeholder={t("upload.theme_custom_ph")}
+      className="w-full bg-input-background border border-border px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring rounded-sm font-body"
+    />
   );
 }
 
@@ -199,8 +204,8 @@ function DropZone({ onFiles, disabled }: { onFiles: (files: File[]) => void; dis
     e.preventDefault();
     setDragging(false);
     if (disabled) return;
-    const pdfs = Array.from(e.dataTransfer.files).filter((f) => f.type === "application/pdf");
-    if (pdfs.length) onFiles(pdfs);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) onFiles(files);
   }, [onFiles, disabled]);
 
   return (
@@ -303,7 +308,15 @@ export default function UploadPage() {
     }, 180);
   };
 
-  const handleFiles = (incoming: File[]) => incoming.forEach(simulateUpload);
+  const handleFiles = (incoming: File[]) => {
+    const validFiles = incoming.filter((file) => file.type === "application/pdf" && file.size <= 50 * 1024 * 1024);
+    if (validFiles.length !== incoming.length) {
+      setFormError("Please choose PDF files smaller than 50 MB.");
+    } else {
+      setFormError("");
+    }
+    validFiles.forEach(simulateUpload);
+  };
   const removeFile = (id: string) => setFiles((prev) => prev.filter((f) => f.id !== id));
   const allDone = files.length > 0 && files.every((f) => f.status === "done");
 
@@ -312,15 +325,17 @@ export default function UploadPage() {
     setCoverUrl(null);
     setTheme("");
     setForm({ title: "", subtitle: "", volume: "", year: new Date().getFullYear().toString(), publishDate: "", editors: "" });
+    setFormError("");
   };
 
-  const resolvedTheme = theme === "__other__" ? "" : theme;
+  const resolvedCategory = theme === "__other__" ? "" : theme;
 
   const handlePublish = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
     if (!form.title.trim()) { setFormError(t("upload.err_title")); return; }
     if (!form.volume.trim()) { setFormError(t("upload.err_volume")); return; }
+    if (!resolvedCategory) { setFormError(t("upload.category_required")); return; }
     if (!allDone) { setFormError(t("upload.err_wait")); return; }
     setSubmitting(true);
     setTimeout(() => {
@@ -330,7 +345,7 @@ export default function UploadPage() {
         subtitle: form.subtitle,
         volume: form.volume,
         year: form.year,
-        theme: resolvedTheme,
+        category: resolvedCategory,
         editors: form.editors,
         publishDate: form.publishDate || undefined,
         fileName: files[0]?.file.name ?? "",
@@ -514,12 +529,12 @@ export default function UploadPage() {
                 </div>
               </div>
 
-              {/* Theme dropdown */}
+              {/* Category dropdown */}
               <div>
                 <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-body">
-                  {t("upload.theme")}
+                  {t("upload.category")} <span className="text-accent">*</span>
                 </label>
-                <ThemeSelect value={theme} onChange={setTheme} />
+                <CategorySelect value={theme} onChange={setTheme} />
               </div>
 
               {/* Editors */}
