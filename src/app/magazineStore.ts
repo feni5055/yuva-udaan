@@ -33,11 +33,19 @@ export function registerMember(m: Member): void {
   localStorage.setItem(MEMBERS_KEY, JSON.stringify([...list, m]));
 }
 
-const ADMIN_EMAILS = ["fenilmuneer@gmail.com", "fenilmuneer@gamil.com"];
-const ADMIN_PASSWORDS = ["vpm@2522", "vpm@2552"];
+// Load admin credentials from Vite env variables (comma-separated). Keep demo fallback for local dev only.
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS ?? "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+const ADMIN_PASSWORDS = (import.meta.env.VITE_ADMIN_PASSWORDS ?? "").split(",").map(s => s.trim()).filter(Boolean);
 
 export function isAdminCredential(email: string, password: string): boolean {
-  return ADMIN_EMAILS.includes(email.toLowerCase().trim()) && ADMIN_PASSWORDS.includes(password);
+  const e = email.toLowerCase().trim();
+  // If no admin creds are configured, allow the original demo maintainer creds for local development only.
+  if (ADMIN_EMAILS.length === 0 || ADMIN_PASSWORDS.length === 0) {
+    const demoEmails = ["fenilmuneer@gmail.com"];
+    const demoPasswords = ["vpm@2522"];
+    return demoEmails.includes(e) && demoPasswords.includes(password);
+  }
+  return ADMIN_EMAILS.includes(e) && ADMIN_PASSWORDS.includes(password);
 }
 
 export function findMember(email: string, password: string): Member | null {
