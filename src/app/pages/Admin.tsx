@@ -17,24 +17,40 @@ export default function Admin() {
     }
   }, [authenticated]);
 
-  function doLogin(e?: React.FormEvent) {
+  async function doLogin(e?: React.FormEvent) {
     e?.preventDefault();
-    if (isAdminCredential(email, password)) {
-      sessionStorage.setItem("hc_admin_auth", "1");
-      setAuthenticated(true);
-      setError(null);
-      setMagazines(getMagazines());
-      setMembers(getMembers());
-    } else {
-      setError("Invalid admin credentials");
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+      if (res.ok) {
+        sessionStorage.setItem('hc_admin_auth', '1');
+        setAuthenticated(true);
+        setError(null);
+        setMagazines(getMagazines());
+        setMembers(getMembers());
+      } else {
+        const data = await res.json();
+        setError(data?.message || 'Invalid admin credentials');
+      }
+    } catch (err) {
+      setError('Network error');
     }
   }
 
-  function doLogout() {
-    sessionStorage.removeItem("hc_admin_auth");
+  async function doLogout() {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      // ignore
+    }
+    sessionStorage.removeItem('hc_admin_auth');
     setAuthenticated(false);
-    setEmail("");
-    setPassword("");
+    setEmail('');
+    setPassword('');
   }
 
   function handleDeleteMagazine(id: string) {

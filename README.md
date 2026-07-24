@@ -16,6 +16,15 @@ This project reads admin credentials from Vite environment variables (for local/
 - VITE_ADMIN_EMAILS — comma-separated admin emails (lowercased)
 - VITE_ADMIN_PASSWORDS — comma-separated admin passwords
 
+For server-side admin auth (recommended for production), the repository includes a minimal Express auth server (server/index.js) that issues an HTTP-only JWT cookie. Server environment variables (see .env.example):
+
+- ADMIN_EMAILS — comma-separated admin emails
+- ADMIN_PASSWORDS — comma-separated admin passwords
+- ADMIN_JWT_SECRET — strong random secret used to sign admin tokens
+- FRONTEND_ORIGIN — frontend origin allowed for CORS (default http://localhost:5173)
+
+Start the server with: npm run server
+
 Do NOT commit secrets to the repository. Use .env (local) or repository secrets/CI variables for CI/deploy.
 
 ## CI
