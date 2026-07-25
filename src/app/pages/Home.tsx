@@ -400,15 +400,19 @@ function SignInToBanner() {
 
 function ContributorsSection({ authors }: { authors: Author[] }) {
   const { t } = useLang();
+  const orderedAuthors = [...authors].sort((a, b) => {
+    const roleRank = (role: string) => role.toLowerCase() === "team leader" ? 0 : 1;
+    return roleRank(a.bio) - roleRank(b.bio) || a.displayName.localeCompare(b.displayName);
+  });
+
   return (
     <section id="contributors" className="py-20 border-t border-border scroll-mt-20">
       <div className="max-w-6xl mx-auto px-5">
         <div className="text-center mb-12">
-          <div className="text-accent text-xs tracking-[0.2em] uppercase mb-2 font-medium font-body">— {t("team.eyebrow")}</div>
-          <h2 className="text-3xl text-foreground font-display font-bold">{t("team.heading")}</h2>
+          <div className="text-accent text-xs tracking-[0.2em] uppercase font-medium font-body">— {t("team.eyebrow")}</div>
         </div>
         <div className="flex justify-center gap-16">
-          {authors.map((author) => (
+          {orderedAuthors.map((author) => (
             <div key={author.id} className="text-center group">
               <div className="w-24 h-24 rounded-full overflow-hidden mx-auto mb-3 ring-2 ring-border group-hover:ring-accent transition-all bg-muted">
                 {author.avatarUrl ? (
@@ -418,7 +422,7 @@ function ContributorsSection({ authors }: { authors: Author[] }) {
                 )}
               </div>
               <div className="text-foreground text-base font-display font-semibold">{author.displayName}</div>
-              <div className="text-muted-foreground text-xs mt-0.5 font-body">{t("team.role")}</div>
+              <div className="text-muted-foreground text-xs mt-0.5 font-body">{author.bio || t("team.role")}</div>
             </div>
           ))}
         </div>
