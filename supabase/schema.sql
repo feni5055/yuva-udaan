@@ -2,6 +2,8 @@
 -- Supabase already owns auth.users. `profiles` is the public application-user table.
 
 create extension if not exists pgcrypto;
+create schema if not exists private;
+revoke all on schema private from public;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -92,7 +94,7 @@ create index if not exists articles_category_id_idx on public.articles(category_
 create index if not exists articles_status_idx on public.articles(status);
 create index if not exists comments_article_id_idx on public.comments(article_id);
 
-create or replace function public.is_admin()
+create or replace function private.is_admin()
 returns boolean
 language sql
 stable
@@ -102,7 +104,7 @@ as $$
   select exists (select 1 from public.profiles where id = auth.uid() and is_admin = true);
 $$;
 
-create or replace function public.handle_new_user()
+create or replace function private.handle_new_user()
 returns trigger
 language plpgsql
 security definer
@@ -122,7 +124,12 @@ $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
-  for each row execute procedure public.handle_new_user();
+  for each row execute procedure private.handle_new_user();
+
+revoke all on function private.is_admin() from public;
+revoke all on function private.handle_new_user() from public;
+grant usage on schema private to authenticated;
+grant execute on function private.is_admin() to authenticated;
 
 alter table public.profiles enable row level security;
 alter table public.categories enable row level security;
@@ -133,34 +140,39 @@ alter table public.comments enable row level security;
 alter table public.contact_messages enable row level security;
 
 -- Profiles and authors
-create policy "Profiles are readable by their owner or an admin" on public.profiles for select to authenticated using (auth.uid() = id or public.is_admin());
+create policy "Profiles are readable by their owner or an admin" on public.profiles for select to authenticated using (auth.uid() = id or private.is_admin());
 create policy "Users can update their own profile" on public.profiles for update to authenticated using (auth.uid() = id) with check (auth.uid() = id and is_admin = (select is_admin from public.profiles where id = auth.uid()));
 create policy "Authors are publicly readable" on public.authors for select using (true);
 create policy "Authors can update their own profile" on public.authors for update to authenticated using (profile_id = auth.uid()) with check (profile_id = auth.uid());
 
 -- Categories
 create policy "Categories are publicly readable" on public.categories for select using (true);
-create policy "Admins manage categories" on public.categories for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins manage categories" on public.categories for all to authenticated using (private.is_admin()) with check (private.is_admin());
 
 -- Magazines and articles
-create policy "Published magazines are public" on public.magazines for select using (status = 'published' or created_by = auth.uid() or public.is_admin());
+create policy "Published magazines are public" on public.magazines for select using (status = 'published' or created_by = auth.uid() or private.is_admin());
 create policy "Users create their own magazine drafts" on public.magazines for insert to authenticated with check (created_by = auth.uid() and status = 'draft');
-create policy "Owners update their drafts and admins review" on public.magazines for update to authenticated using ((created_by = auth.uid() and status = 'draft') or public.is_admin()) with check ((created_by = auth.uid() and status = 'draft') or public.is_admin());
-create policy "Admins or owners delete drafts" on public.magazines for delete to authenticated using ((created_by = auth.uid() and status = 'draft') or public.is_admin());
+create policy "Owners update their drafts and admins review" on public.magazines for update to authenticated using ((created_by = auth.uid() and status = 'draft') or private.is_admin()) with check ((created_by = auth.uid() and status = 'draft') or private.is_admin());
+create policy "Admins or owners delete drafts" on public.magazines for delete to authenticated using ((created_by = auth.uid() and status = 'draft') or private.is_admin());
 
-create policy "Published articles are public" on public.articles for select using (status = 'published' or public.is_admin() or exists (select 1 from public.authors where id = author_id and profile_id = auth.uid()));
+create policy "Published articles are public" on public.articles for select using (status = 'published' or private.is_admin() or exists (select 1 from public.authors where id = author_id and profile_id = auth.uid()));
 create policy "Authors create their own drafts" on public.articles for insert to authenticated with check (status = 'draft' and exists (select 1 from public.authors where id = author_id and profile_id = auth.uid()));
-create policy "Authors update drafts and admins review" on public.articles for update to authenticated using ((status = 'draft' and exists (select 1 from public.authors where id = author_id and profile_id = auth.uid())) or public.is_admin()) with check ((status = 'draft' and exists (select 1 from public.authors where id = author_id and profile_id = auth.uid())) or public.is_admin());
-create policy "Authors delete drafts and admins delete" on public.articles for delete to authenticated using ((status = 'draft' and exists (select 1 from public.authors where id = author_id and profile_id = auth.uid())) or public.is_admin());
+create policy "Authors update drafts and admins review" on public.articles for update to authenticated using ((status = 'draft' and exists (select 1 from public.authors where id = author_id and profile_id = auth.uid())) or private.is_admin()) with check ((status = 'draft' and exists (select 1 from public.authors where id = author_id and profile_id = auth.uid())) or private.is_admin());
+create policy "Authors delete drafts and admins delete" on public.articles for delete to authenticated using ((status = 'draft' and exists (select 1 from public.authors where id = author_id and profile_id = auth.uid())) or private.is_admin());
 
 -- Comments and contact messages
-create policy "Approved comments are public" on public.comments for select using (is_approved or profile_id = auth.uid() or public.is_admin());
+create policy "Approved comments are public" on public.comments for select using (is_approved or profile_id = auth.uid() or private.is_admin());
 create policy "Signed-in users create their own comments" on public.comments for insert to authenticated with check (profile_id = auth.uid() and is_approved = false);
-create policy "Admins moderate comments" on public.comments for update to authenticated using (public.is_admin()) with check (public.is_admin());
-create policy "Users delete their own comments or admins delete" on public.comments for delete to authenticated using (profile_id = auth.uid() or public.is_admin());
-create policy "Anyone can submit a contact message" on public.contact_messages for insert with check (true);
-create policy "Admins can manage contact messages" on public.contact_messages for select to authenticated using (public.is_admin());
-create policy "Admins update contact messages" on public.contact_messages for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins moderate comments" on public.comments for update to authenticated using (private.is_admin()) with check (private.is_admin());
+create policy "Users delete their own comments or admins delete" on public.comments for delete to authenticated using (profile_id = auth.uid() or private.is_admin());
+create policy "Anyone can submit a validated contact message" on public.contact_messages for insert to anon, authenticated with check (
+  char_length(trim(name)) between 1 and 120
+  and email ~* '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$'
+  and char_length(trim(subject)) <= 200
+  and char_length(trim(message)) between 1 and 5000
+);
+create policy "Admins can manage contact messages" on public.contact_messages for select to authenticated using (private.is_admin());
+create policy "Admins update contact messages" on public.contact_messages for update to authenticated using (private.is_admin()) with check (private.is_admin());
 
 -- Initial public categories. Re-running this will not create duplicates.
 insert into public.categories (name, slug) values
