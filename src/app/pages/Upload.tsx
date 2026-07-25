@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router";
-import { saveMagazine } from "../magazineStore";
-import { useLang, LangToggle, ThemeToggle, THEME_OPTIONS } from "../AppContext";
+import { Link, useNavigate } from "react-router";
+import { useAuth, useLang, LangToggle, ThemeToggle, THEME_OPTIONS } from "../AppContext";
+import { createMagazineDraft } from "../contentService";
 import {
   BookOpen, Upload, FileText, X, CheckCircle,
   AlertCircle, ChevronLeft, Calendar, Users, Hash, ImagePlus, ChevronDown,
@@ -52,15 +52,15 @@ function NavBar() {
 
 // ── Cover image picker ─────────────────────────────────────────────────────
 
-function CoverPicker({ coverUrl, onChange }: { coverUrl: string | null; onChange: (url: string | null) => void }) {
+function CoverPicker({ coverUrl, onChange }: { coverUrl: string | null; onChange: (file: File | null, url: string | null) => void }) {
   const { t } = useLang();
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const readFile = (file: File) => {
-    if (!file.type.startsWith("image/")) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 10 * 1024 * 1024) return;
     const reader = new FileReader();
-    reader.onload = (e) => onChange(e.target?.result as string);
+    reader.onload = (e) => onChange(file, e.target?.result as string);
     reader.readAsDataURL(file);
   };
 
@@ -84,7 +84,7 @@ function CoverPicker({ coverUrl, onChange }: { coverUrl: string | null; onChange
               className="bg-white/90 text-foreground text-xs px-3 py-1.5 rounded-sm font-body hover:bg-white transition-colors">
               {t("upload.cover_change")}
             </button>
-            <button type="button" onClick={() => onChange(null)}
+            <button type="button" onClick={() => onChange(null, null)}
               className="bg-white/90 text-destructive text-xs px-3 py-1.5 rounded-sm font-body hover:bg-white transition-colors">
               {t("upload.cover_remove")}
             </button>
@@ -285,37 +285,29 @@ function FileRow({ item, onRemove }: { item: UploadedFile; onRemove: () => void 
 export default function UploadPage() {
   const navigate = useNavigate();
   const { t } = useLang();
+  const { authReady, isLoggedIn, user } = useAuth();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [theme, setTheme] = useState("");
   const [form, setForm] = useState({ title: "", subtitle: "", volume: "", year: new Date().getFullYear().toString(), publishDate: "", editors: "" });
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const simulateUpload = (file: File) => {
-    const id = Math.random().toString(36).slice(2);
-    setFiles((prev) => [...prev, { file, progress: 0, status: "uploading", id }]);
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.floor(Math.random() * 18) + 6;
-      if (progress >= 100) {
-        clearInterval(interval);
-        setFiles((prev) => prev.map((f) => f.id === id ? { ...f, progress: 100, status: "done" } : f));
-      } else {
-        setFiles((prev) => prev.map((f) => f.id === id ? { ...f, progress } : f));
-      }
-    }, 180);
-  };
-
   const handleFiles = (incoming: File[]) => {
-    const validFiles = incoming.filter((file) => file.type === "application/pdf" && file.size <= 50 * 1024 * 1024);
+    const validFiles = incoming.filter((file) => file.type === "application/pdf" && file.size <= 50 * 1024 * 1024).slice(0, 1);
     if (validFiles.length !== incoming.length) {
-      setFormError("Please choose PDF files smaller than 50 MB.");
+      setFormError("Choose one PDF file smaller than 50 MB.");
     } else {
       setFormError("");
     }
-    validFiles.forEach(simulateUpload);
+    setFiles(validFiles.map((file) => ({
+      file,
+      progress: 100,
+      status: "done",
+      id: crypto.randomUUID(),
+    })));
   };
   const removeFile = (id: string) => setFiles((prev) => prev.filter((f) => f.id !== id));
   const allDone = files.length > 0 && files.every((f) => f.status === "done");
@@ -323,6 +315,7 @@ export default function UploadPage() {
   const reset = () => {
     setFiles([]);
     setCoverUrl(null);
+    setCoverFile(null);
     setTheme("");
     setForm({ title: "", subtitle: "", volume: "", year: new Date().getFullYear().toString(), publishDate: "", editors: "" });
     setFormError("");
@@ -330,33 +323,51 @@ export default function UploadPage() {
 
   const resolvedCategory = theme === "__other__" ? "" : theme;
 
-  const handlePublish = (e: React.FormEvent) => {
+  const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
     if (!form.title.trim()) { setFormError(t("upload.err_title")); return; }
     if (!form.volume.trim()) { setFormError(t("upload.err_volume")); return; }
     if (!resolvedCategory) { setFormError(t("upload.category_required")); return; }
     if (!allDone) { setFormError(t("upload.err_wait")); return; }
+    if (!user) { setFormError("Please sign in again before uploading."); return; }
     setSubmitting(true);
-    setTimeout(() => {
-      saveMagazine({
-        id: Math.random().toString(36).slice(2),
+    try {
+      await createMagazineDraft({
         title: form.title,
         subtitle: form.subtitle,
         volume: form.volume,
         year: form.year,
         category: resolvedCategory,
         editors: form.editors,
-        publishDate: form.publishDate || undefined,
-        fileName: files[0]?.file.name ?? "",
-        fileSize: files[0]?.file.size ?? 0,
-        uploadedAt: new Date().toISOString(),
-        coverUrl: coverUrl ?? undefined,
+        publicationDate: form.publishDate || undefined,
+        pdf: files[0].file,
+        cover: coverFile,
+        userId: user.id,
       });
-      setSubmitting(false);
       setSubmitted(true);
-    }, 1400);
+    } catch (requestError) {
+      setFormError(requestError instanceof Error ? requestError.message : "Upload failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (!authReady) {
+    return <main className="min-h-screen bg-background text-foreground flex items-center justify-center font-body">Checking your secure session…</main>;
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <main className="min-h-screen bg-background text-foreground flex items-center justify-center px-5">
+        <div className="max-w-sm text-center">
+          <h1 className="text-3xl font-display font-bold mb-3">Member sign-in required</h1>
+          <p className="text-muted-foreground font-body mb-6">Sign in before uploading a magazine issue.</p>
+          <Link to="/login" className="inline-flex bg-primary text-primary-foreground px-4 py-2.5 text-sm font-body">Sign in</Link>
+        </div>
+      </main>
+    );
+  }
 
   // ── Success ───────────────────────────────────────────────────────────────
 
@@ -435,7 +446,13 @@ export default function UploadPage() {
               <div>
                 <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3 font-body">{t("upload.step2")}</p>
                 <div className="bg-secondary/50 border border-border rounded-sm p-6 flex flex-col items-center gap-5">
-                  <CoverPicker coverUrl={coverUrl} onChange={setCoverUrl} />
+                  <CoverPicker
+                    coverUrl={coverUrl}
+                    onChange={(file, url) => {
+                      setCoverFile(file);
+                      setCoverUrl(url);
+                    }}
+                  />
                   <div className="text-center space-y-1.5 max-w-xs">
                     <p className="text-xs text-muted-foreground font-body leading-relaxed">{t("upload.cover_desc")}</p>
                     <p className="text-xs text-muted-foreground/60 font-body">{t("upload.cover_hint")}</p>

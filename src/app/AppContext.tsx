@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { Languages, Moon, Sun } from "lucide-react";
 import { supabase } from "./supabase";
+import { getCurrentProfile, type Profile } from "./contentService";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -10,13 +11,29 @@ type Lang  = "en" | "hi";
 
 interface ThemeCtx { theme: Theme; toggleTheme: () => void; }
 interface LangCtx  { lang: Lang; toggleLang: () => void; t: (key: string) => string; }
-interface AuthCtx  { isLoggedIn: boolean; authReady: boolean; user: User | null; refreshAuth: () => Promise<void>; logout: () => Promise<void>; }
+interface AuthCtx  {
+  isLoggedIn: boolean;
+  isAdmin: boolean;
+  authReady: boolean;
+  user: User | null;
+  profile: Profile | null;
+  refreshAuth: () => Promise<void>;
+  logout: () => Promise<void>;
+}
 
 // ── Contexts ───────────────────────────────────────────────────────────────
 
 const ThemeContext = createContext<ThemeCtx>({ theme: "light", toggleTheme: () => {} });
 const LangContext  = createContext<LangCtx>({ lang: "en", toggleLang: () => {}, t: (k) => k });
-const AuthContext  = createContext<AuthCtx>({ isLoggedIn: false, authReady: false, user: null, refreshAuth: async () => {}, logout: async () => {} });
+const AuthContext  = createContext<AuthCtx>({
+  isLoggedIn: false,
+  isAdmin: false,
+  authReady: false,
+  user: null,
+  profile: null,
+  refreshAuth: async () => {},
+  logout: async () => {},
+});
 
 export function useTheme() { return useContext(ThemeContext); }
 export function useLang()  { return useContext(LangContext); }
@@ -288,6 +305,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     (localStorage.getItem("hc_lang") as Lang | null) ?? "en"
   );
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
@@ -305,15 +323,21 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   const refreshAuth = async () => {
     const { data } = await supabase.auth.getSession();
-    setUser(data.session?.user ?? null);
+    const sessionUser = data.session?.user ?? null;
+    setUser(sessionUser);
+    setProfile(sessionUser ? await getCurrentProfile(sessionUser).catch(() => null) : null);
     setAuthReady(true);
   };
 
   useEffect(() => {
     void refreshAuth();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setAuthReady(true);
+      const sessionUser = session?.user ?? null;
+      setUser(sessionUser);
+      void (async () => {
+        setProfile(sessionUser ? await getCurrentProfile(sessionUser).catch(() => null) : null);
+        setAuthReady(true);
+      })();
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -321,12 +345,21 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setProfile(null);
   };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       <LangContext.Provider value={{ lang, toggleLang, t }}>
-        <AuthContext.Provider value={{ isLoggedIn: Boolean(user), authReady, user, refreshAuth, logout }}>
+        <AuthContext.Provider value={{
+          isLoggedIn: Boolean(user),
+          isAdmin: Boolean(profile?.isAdmin),
+          authReady,
+          user,
+          profile,
+          refreshAuth,
+          logout,
+        }}>
           {children}
         </AuthContext.Provider>
       </LangContext.Provider>

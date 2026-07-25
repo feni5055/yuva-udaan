@@ -5,6 +5,7 @@ import RequestAccess from "./pages/RequestAccess";
 import UploadPage from "./pages/Upload";
 import Admin from "./pages/Admin";
 import IssueDetail from "./pages/IssueDetail";
+import ArticleDetail from "./pages/ArticleDetail";
 
 export const router = createBrowserRouter([
   { path: "/login", Component: Login },
@@ -12,5 +13,6 @@ export const router = createBrowserRouter([
   { path: "/upload", Component: UploadPage },
   { path: "/admin", Component: Admin },
   { path: "/issues/:id", Component: IssueDetail },
+  { path: "/articles/:id", Component: ArticleDetail },
   { path: "/", Component: Home },
 ]);

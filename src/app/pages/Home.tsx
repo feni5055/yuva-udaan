@@ -1,14 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  Upload, BookOpen, ChevronDown, Menu,
-  Lock, FileText, Trash2, Moon, Sun, Languages,
+  Upload, BookOpen, ChevronDown, Menu, X,
+  Lock, FileText, Moon, Sun, Languages, LoaderCircle, Send,
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import { getMagazines, deleteMagazine, type StoredMagazine } from "../magazineStore";
-import { useTheme, useLang, useAuth, CATEGORY_OPTIONS } from "../AppContext";
-
-const member1 = new URL("../../imports/PHOTO-2026-07-17-20-56-35.jpg", import.meta.url).href;
-const member2 = new URL("../../imports/Untitled-11.jpg", import.meta.url).href;
+import { useTheme, useLang, useAuth } from "../AppContext";
+import {
+  listAuthors,
+  listCategories,
+  listPublishedMagazines,
+  submitContactMessage,
+  type Author,
+  type Category,
+  type Magazine,
+} from "../contentService";
 
 // ── NavBar ─────────────────────────────────────────────────────────────────
 
@@ -17,7 +22,7 @@ function NavBar() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { lang, toggleLang, t } = useLang();
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, isAdmin, logout } = useAuth();
 
   const navLinks = [
     { label: t("nav.issues"), href: "#issues" },
@@ -64,6 +69,11 @@ function NavBar() {
               >
                 <Upload size={13} /> {t("nav.upload")}
               </button>
+              {isAdmin && (
+                <button onClick={() => navigate("/admin")} className="text-accent hover:underline text-sm font-body">
+                  Admin
+                </button>
+              )}
               <button
                 onClick={handleSignOut}
                 className="text-muted-foreground hover:text-foreground text-sm font-body transition-colors"
@@ -130,6 +140,11 @@ function NavBar() {
               >
                 <Upload size={13} /> {t("nav.upload")}
               </button>
+              {isAdmin && (
+                <button onClick={() => { navigate("/admin"); setMenuOpen(false); }} className="text-accent text-sm font-body w-fit">
+                  Admin dashboard
+                </button>
+              )}
               <button onClick={() => { handleSignOut(); setMenuOpen(false); }} className="text-muted-foreground text-sm font-body w-fit">
                 {lang === "en" ? "Sign Out" : "साइन आउट"}
               </button>
@@ -150,16 +165,14 @@ function NavBar() {
 
 // ── Hero ───────────────────────────────────────────────────────────────────
 
-function Hero() {
+function Hero({ magazines, contributorCount }: { magazines: Magazine[]; contributorCount: number }) {
   const { t } = useLang();
-  const magazines = getMagazines();
   const totalIssues = magazines.length;
   const featuredMagazines = magazines.filter((magazine) => magazine.coverUrl).slice(0, 2);
-  const totalContributors = 2; // real team members shown on this site
 
   const stats = [
     { labelKey: "hero.stat1", value: String(totalIssues) },
-    { labelKey: "hero.stat2", value: String(totalContributors) },
+    { labelKey: "hero.stat2", value: String(contributorCount) },
   ];
 
   return (
@@ -222,10 +235,9 @@ function Hero() {
   );
 }
 
-function LatestIssue() {
+function LatestIssue({ magazines }: { magazines: Magazine[] }) {
   const { t } = useLang();
-  const uploaded = getMagazines();
-  const latest = uploaded[0];
+  const latest = magazines[0];
 
   if (!latest) return null;
 
@@ -252,8 +264,8 @@ function LatestIssue() {
   );
 }
 
-function CategoriesSection({ activeCategory, onSelect }: { activeCategory: string; onSelect: (category: string) => void }) {
-  const { lang, t } = useLang();
+function CategoriesSection({ activeCategory, categories, onSelect }: { activeCategory: string; categories: Category[]; onSelect: (category: string) => void }) {
+  const { t } = useLang();
   const selectCategory = (category: string) => {
     onSelect(category);
     document.getElementById("issues")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -264,9 +276,9 @@ function CategoriesSection({ activeCategory, onSelect }: { activeCategory: strin
         <h2 className="text-center text-2xl text-foreground font-display font-bold mb-7">{t("issues.categories")}</h2>
         <div className="flex flex-wrap justify-center gap-2.5">
           <button type="button" onClick={() => selectCategory("")} className={`border px-4 py-2 text-sm transition-colors font-body ${!activeCategory ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-accent hover:text-accent"}`}>All issues</button>
-          {CATEGORY_OPTIONS.map((category) => (
-            <button type="button" key={category.en} onClick={() => selectCategory(category.en)} className={`border px-4 py-2 text-sm transition-colors font-body ${activeCategory === category.en ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-accent hover:text-accent"}`}>
-              {lang === "hi" ? category.hi : category.en}
+          {categories.map((category) => (
+            <button type="button" key={category.id} onClick={() => selectCategory(category.name)} className={`border px-4 py-2 text-sm transition-colors font-body ${activeCategory === category.name ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-accent hover:text-accent"}`}>
+              {category.name}
             </button>
           ))}
         </div>
@@ -277,14 +289,10 @@ function CategoriesSection({ activeCategory, onSelect }: { activeCategory: strin
 
 // ── Uploaded card ──────────────────────────────────────────────────────────
 
-function UploadedCard({ mag, onDelete }: { mag: StoredMagazine; onDelete: () => void }) {
+function UploadedCard({ mag }: { mag: Magazine }) {
   const { t } = useLang();
   const navigate = useNavigate();
-  const fileSizeLabel =
-    mag.fileSize < 1024 * 1024
-      ? `${(mag.fileSize / 1024).toFixed(0)} KB`
-      : `${(mag.fileSize / (1024 * 1024)).toFixed(1)} MB`;
-  const uploadedDate = new Date(mag.uploadedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const uploadedDate = new Date(mag.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
   return (
     <article className="group relative border border-border rounded-sm bg-card overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -306,14 +314,6 @@ function UploadedCard({ mag, onDelete }: { mag: StoredMagazine; onDelete: () => 
         <div className="absolute top-3 left-3 bg-accent text-accent-foreground text-[10px] font-semibold px-2 py-0.5 rounded-sm tracking-wide font-body uppercase z-10">
           {t("card.new")}
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="absolute top-3 right-3 w-7 h-7 bg-black/40 hover:bg-destructive text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10"
-          title="Remove magazine"
-          aria-label="Remove magazine"
-        >
-          <Trash2 size={12} />
-        </button>
         {mag.coverUrl && (
           <div className="absolute bottom-4 left-4 right-4 z-10">
             <p className="text-white text-base font-bold font-display leading-tight">{mag.title}</p>
@@ -323,17 +323,12 @@ function UploadedCard({ mag, onDelete }: { mag: StoredMagazine; onDelete: () => 
       </div>
       <div className="p-4">
         <span className="text-xs text-muted-foreground uppercase tracking-widest font-body">Vol. {mag.volume} · {mag.year}</span>
-        {mag.publishDate && (
+        {mag.publicationDate && (
           <p className="text-xs text-accent font-body mt-0.5">
-            {new Date(mag.publishDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+            {new Date(mag.publicationDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
           </p>
         )}
         {mag.category && <p className="text-sm text-foreground font-body mt-1 mb-2">{t("issues.category")}: {mag.category}</p>}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground font-body border-t border-border pt-2 mt-2">
-          <FileText size={11} className="shrink-0" />
-          <span className="truncate">{mag.fileName}</span>
-          <span className="shrink-0 ml-auto">{fileSizeLabel}</span>
-        </div>
         <p className="text-[10px] text-muted-foreground font-body mt-1">{t("card.uploaded")} {uploadedDate}</p>
         <button type="button" onClick={() => navigate(`/issues/${mag.id}`)} className="mt-3 text-sm text-accent hover:underline font-body">View issue</button>
       </div>
@@ -343,17 +338,10 @@ function UploadedCard({ mag, onDelete }: { mag: StoredMagazine; onDelete: () => 
 
 // ── Issues section ─────────────────────────────────────────────────────────
 
-function IssuesSection({ activeCategory }: { activeCategory: string }) {
+function IssuesSection({ activeCategory, magazines, loading, error }: { activeCategory: string; magazines: Magazine[]; loading: boolean; error: string }) {
   const { t } = useLang();
-  const [uploaded, setUploaded] = useState<StoredMagazine[]>(() => getMagazines());
-
-  const handleDelete = (id: string) => {
-    deleteMagazine(id);
-    setUploaded(getMagazines());
-  };
-
-  const totalCount = uploaded.length;
-  const filteredUploaded = activeCategory ? uploaded.filter((mag) => mag.category === activeCategory) : uploaded;
+  const totalCount = magazines.length;
+  const filteredUploaded = activeCategory ? magazines.filter((mag) => mag.category === activeCategory) : magazines;
 
   return (
     <section id="issues" className="py-20 border-t border-border scroll-mt-20">
@@ -365,12 +353,15 @@ function IssuesSection({ activeCategory }: { activeCategory: string }) {
           </div>
           <span className="hidden md:block text-muted-foreground text-sm font-body">{totalCount} {t("issues.count")}</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-          {filteredUploaded.map((mag) => (
-            <UploadedCard key={mag.id} mag={mag} onDelete={() => handleDelete(mag.id)} />
-          ))}
-        </div>
-        {filteredUploaded.length === 0 && <p className="py-10 text-center text-muted-foreground font-body">No issues are available in this category yet.</p>}
+        {loading ? (
+          <div className="py-12 flex justify-center"><LoaderCircle className="animate-spin text-primary" aria-label="Loading issues" /></div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+            {filteredUploaded.map((mag) => <UploadedCard key={mag.id} mag={mag} />)}
+          </div>
+        )}
+        {!loading && filteredUploaded.length === 0 && <p className="py-10 text-center text-muted-foreground font-body">No published issues are available in this category yet.</p>}
+        {error && <p role="alert" className="py-4 text-center text-destructive font-body">{error}</p>}
       </div>
     </section>
   );
@@ -407,12 +398,8 @@ function SignInToBanner() {
 
 // ── Contributors ───────────────────────────────────────────────────────────
 
-function ContributorsSection() {
+function ContributorsSection({ authors }: { authors: Author[] }) {
   const { t } = useLang();
-  const members = [
-    { name: "Member", avatarSrc: member1 },
-    { name: "Member", avatarSrc: member2 },
-  ];
   return (
     <section id="contributors" className="py-20 border-t border-border scroll-mt-20">
       <div className="max-w-6xl mx-auto px-5">
@@ -421,16 +408,66 @@ function ContributorsSection() {
           <h2 className="text-3xl text-foreground font-display font-bold">{t("team.heading")}</h2>
         </div>
         <div className="flex justify-center gap-16">
-          {members.map((c, i) => (
-            <div key={i} className="text-center group">
+          {authors.map((author) => (
+            <div key={author.id} className="text-center group">
               <div className="w-24 h-24 rounded-full overflow-hidden mx-auto mb-3 ring-2 ring-border group-hover:ring-accent transition-all bg-muted">
-                <img src={c.avatarSrc} alt={c.name} className="w-full h-full object-cover" />
+                {author.avatarUrl ? (
+                  <img src={author.avatarUrl} alt={author.displayName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-2xl font-display text-primary">{author.displayName.slice(0, 1).toUpperCase()}</div>
+                )}
               </div>
-              <div className="text-foreground text-base font-display font-semibold">{c.name}</div>
+              <div className="text-foreground text-base font-display font-semibold">{author.displayName}</div>
               <div className="text-muted-foreground text-xs mt-0.5 font-body">{t("team.role")}</div>
             </div>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function ContactSection() {
+  const { lang } = useLang();
+  const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSubmitting(true);
+    setNotice("");
+    setError("");
+    try {
+      await submitContactMessage(form);
+      setForm({ name: "", email: "", subject: "", message: "" });
+      setNotice(lang === "hi" ? "आपका संदेश भेज दिया गया है।" : "Your message has been sent.");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Message could not be sent.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section id="contact" className="py-20 border-t border-border scroll-mt-20">
+      <div className="max-w-3xl mx-auto px-5">
+        <div className="text-center mb-10">
+          <p className="text-accent text-xs tracking-[0.2em] uppercase mb-2 font-body">— Contact</p>
+          <h2 className="text-3xl font-display font-bold">{lang === "hi" ? "संपर्क करें" : "Send us a message"}</h2>
+        </div>
+        <form onSubmit={submit} className="grid sm:grid-cols-2 gap-4">
+          <input required maxLength={120} aria-label="Name" placeholder={lang === "hi" ? "नाम" : "Name"} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="bg-input-background border border-border p-3 text-sm font-body" />
+          <input required type="email" aria-label="Email" placeholder={lang === "hi" ? "ईमेल" : "Email"} value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} className="bg-input-background border border-border p-3 text-sm font-body" />
+          <input maxLength={200} aria-label="Subject" placeholder={lang === "hi" ? "विषय" : "Subject"} value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} className="sm:col-span-2 bg-input-background border border-border p-3 text-sm font-body" />
+          <textarea required maxLength={5000} rows={5} aria-label="Message" placeholder={lang === "hi" ? "संदेश" : "Message"} value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} className="sm:col-span-2 bg-input-background border border-border p-3 text-sm font-body" />
+          <button disabled={submitting} className="sm:col-span-2 justify-self-start inline-flex items-center gap-2 bg-primary text-primary-foreground px-5 py-3 text-sm font-body disabled:opacity-60">
+            <Send size={14} /> {submitting ? "Sending…" : "Send message"}
+          </button>
+        </form>
+        {notice && <p role="status" className="text-sm text-green-700 mt-4 font-body">{notice}</p>}
+        {error && <p role="alert" className="text-sm text-destructive mt-4 font-body">{error}</p>}
       </div>
     </section>
   );
@@ -476,7 +513,7 @@ function FaqSection() {
 function Footer() {
   const { t } = useLang();
   return (
-    <footer id="contact" className="border-t border-border py-10 scroll-mt-20">
+    <footer className="border-t border-border py-10">
       <div className="max-w-6xl mx-auto px-5 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center">
@@ -498,16 +535,43 @@ function Footer() {
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("");
+  const [magazines, setMagazines] = useState<Magazine[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [authors, setAuthors] = useState<Author[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all([listPublishedMagazines(), listCategories(), listAuthors()])
+      .then(([magazineData, categoryData, authorData]) => {
+        if (!active) return;
+        setMagazines(magazineData);
+        setCategories(categoryData);
+        setAuthors(authorData);
+      })
+      .catch((requestError: Error) => {
+        if (active) setError(requestError.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <NavBar />
-      <Hero />
-      <LatestIssue />
-      <CategoriesSection activeCategory={activeCategory} onSelect={setActiveCategory} />
-      <IssuesSection activeCategory={activeCategory} />
+      <Hero magazines={magazines} contributorCount={authors.length} />
+      <LatestIssue magazines={magazines} />
+      <CategoriesSection activeCategory={activeCategory} categories={categories} onSelect={setActiveCategory} />
+      <IssuesSection activeCategory={activeCategory} magazines={magazines} loading={loading} error={error} />
       <SignInToBanner />
-      <ContributorsSection />
+      <ContributorsSection authors={authors} />
       <FaqSection />
+      <ContactSection />
       <Footer />
     </div>
   );
