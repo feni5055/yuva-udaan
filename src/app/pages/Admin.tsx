@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { ExternalLink, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "../AppContext";
 import {
   getAdminData,
+  getMagazinePdfLink,
   updateArticleStatus,
   updateCommentApproval,
   updateContactStatus,
@@ -26,6 +27,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -52,6 +54,20 @@ export default function Admin() {
       await loadData();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "The update failed.");
+    }
+  };
+
+  const previewMagazine = async (magazineId: string, pdfPath: string | null) => {
+    if (!pdfPath) return;
+    setError("");
+    setPreviewingId(magazineId);
+    try {
+      const url = await getMagazinePdfLink(pdfPath, magazineId);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "The PDF preview could not be opened.");
+    } finally {
+      setPreviewingId(null);
     }
   };
 
@@ -142,6 +158,17 @@ export default function Admin() {
                       <p className="font-display font-semibold">{magazine.title}</p>
                       <p className="text-xs text-muted-foreground font-body">{magazine.category || "Uncategorised"} · Vol. {magazine.volume} · {magazine.year}</p>
                     </div>
+                    <button
+                      type="button"
+                      disabled={!magazine.pdfPath || previewingId === magazine.id}
+                      onClick={() => void previewMagazine(magazine.id, magazine.pdfPath)}
+                      className="inline-flex items-center justify-center gap-1.5 border border-border px-3 py-2 text-sm font-body disabled:opacity-40"
+                    >
+                      {previewingId === magazine.id
+                        ? <LoaderCircle size={14} className="animate-spin" />
+                        : <ExternalLink size={14} />}
+                      Preview PDF
+                    </button>
                     <select
                       value={magazine.status}
                       aria-label={`Status for ${magazine.title}`}

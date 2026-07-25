@@ -145,12 +145,47 @@ function mapArticle(row: ArticleRow): Article {
   };
 }
 
-function safeFileName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/-+/g, "-");
+async function accessToken(): Promise<string> {
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session?.access_token) {
+    throw new Error("Your session has expired. Please sign in again.");
+  }
+  return data.session.access_token;
 }
 
-function objectPath(userId: string, file: File): string {
-  return `${userId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+async function authenticatedRequest<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${await accessToken()}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const result = await response.json().catch(() => ({})) as { error?: string } & T;
+  if (!response.ok) throw new Error(result.error || "The secure file request failed.");
+  return result;
+}
+
+async function uploadToR2(file: File, kind: "pdf" | "cover"): Promise<string> {
+  const { key, uploadUrl } = await authenticatedRequest<{ key: string; uploadUrl: string }>("/api/r2/upload-url", {
+    fileName: file.name,
+    contentType: file.type,
+    size: file.size,
+    kind,
+  });
+  const upload = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+  if (!upload.ok) throw new Error(`The ${kind === "pdf" ? "PDF" : "cover image"} could not be uploaded.`);
+  return key;
+}
+
+async function cleanupR2Uploads(keys: string[]): Promise<void> {
+  if (keys.length === 0) return;
+  await authenticatedRequest<{ ok: true }>("/api/r2/cleanup", { keys }).catch(() => undefined);
 }
 
 export async function getCurrentProfile(user: User): Promise<Profile | null> {
@@ -219,7 +254,12 @@ export async function getMagazine(id: string): Promise<Magazine | null> {
   return data ? mapMagazine(data as MagazineRow) : null;
 }
 
-export async function getMagazinePdfLink(pdfPath: string): Promise<string> {
+export async function getMagazinePdfLink(pdfPath: string, magazineId: string): Promise<string> {
+  if (/^https:\/\//i.test(pdfPath)) return pdfPath;
+  if (pdfPath.startsWith("pending/")) {
+    const { url } = await authenticatedRequest<{ url: string }>("/api/r2/download", { magazineId });
+    return url;
+  }
   const { data, error } = await supabase.storage
     .from("magazine-pdfs")
     .createSignedUrl(pdfPath, 600);
@@ -241,27 +281,19 @@ export interface CreateMagazineInput {
 }
 
 export async function createMagazineDraft(input: CreateMagazineInput): Promise<Magazine> {
-  const pdfPath = objectPath(input.userId, input.pdf);
-  const uploadedObjects: Array<{ bucket: string; path: string }> = [];
-
-  const { error: pdfError } = await supabase.storage
-    .from("magazine-pdfs")
-    .upload(pdfPath, input.pdf, { contentType: "application/pdf", upsert: false });
-  if (pdfError) throw pdfError;
-  uploadedObjects.push({ bucket: "magazine-pdfs", path: pdfPath });
-
-  let coverUrl: string | null = null;
-  if (input.cover) {
-    const coverPath = objectPath(input.userId, input.cover);
-    const { error: coverError } = await supabase.storage
-      .from("magazine-covers")
-      .upload(coverPath, input.cover, { contentType: input.cover.type, upsert: false });
-    if (coverError) {
-      await supabase.storage.from("magazine-pdfs").remove([pdfPath]);
-      throw coverError;
+  const uploadedKeys: string[] = [];
+  let pdfPath: string;
+  let coverPath: string | null = null;
+  try {
+    pdfPath = await uploadToR2(input.pdf, "pdf");
+    uploadedKeys.push(pdfPath);
+    if (input.cover) {
+      coverPath = await uploadToR2(input.cover, "cover");
+      uploadedKeys.push(coverPath);
     }
-    uploadedObjects.push({ bucket: "magazine-covers", path: coverPath });
-    coverUrl = supabase.storage.from("magazine-covers").getPublicUrl(coverPath).data.publicUrl;
+  } catch (error) {
+    await cleanupR2Uploads(uploadedKeys);
+    throw error;
   }
 
   const { data: categoryRow } = await supabase
@@ -282,7 +314,7 @@ export async function createMagazineDraft(input: CreateMagazineInput): Promise<M
       publication_date: input.publicationDate || null,
       editors: input.editors.trim(),
       status: "draft",
-      cover_url: coverUrl,
+      cover_url: coverPath,
       pdf_url: pdfPath,
       created_by: input.userId,
     })
@@ -290,7 +322,7 @@ export async function createMagazineDraft(input: CreateMagazineInput): Promise<M
     .single();
 
   if (error) {
-    await Promise.all(uploadedObjects.map(({ bucket, path }) => supabase.storage.from(bucket).remove([path])));
+    await cleanupR2Uploads(uploadedKeys);
     throw error;
   }
   return mapMagazine(data as MagazineRow);
@@ -428,8 +460,7 @@ export async function getAdminData(): Promise<AdminData> {
 }
 
 export async function updateMagazineStatus(id: string, status: PublicationStatus): Promise<void> {
-  const { error } = await supabase.from("magazines").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
-  if (error) throw error;
+  await authenticatedRequest<{ ok: true }>("/api/r2/magazine-status", { magazineId: id, status });
 }
 
 export async function updateArticleStatus(id: string, status: PublicationStatus): Promise<void> {

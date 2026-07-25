@@ -11,21 +11,16 @@ This is a code bundle for Magazine website design. The original project is avail
 
 ## Environment
 
-This project reads admin credentials from Vite environment variables (for local/demo use only):
+Copy `.env.example` to `.env.local` for local development. Supabase uses the
+two public `VITE_SUPABASE_*` values. Cloudflare R2 credentials are server-only
+and must be configured in Vercel without a `VITE_` prefix.
 
-- VITE_ADMIN_EMAILS — comma-separated admin emails (lowercased)
-- VITE_ADMIN_PASSWORDS — comma-separated admin passwords
+New magazine PDFs and covers upload to the private R2 bucket. Publishing from
+the admin dashboard copies them to the public R2 bucket. Existing Supabase
+Storage magazine files remain supported.
 
-For server-side admin auth (recommended for production), the repository includes a minimal Express auth server (server/index.js) that issues an HTTP-only JWT cookie. Server environment variables (see .env.example):
-
-- ADMIN_EMAILS — comma-separated admin emails
-- ADMIN_PASSWORDS — comma-separated admin passwords
-- ADMIN_JWT_SECRET — strong random secret used to sign admin tokens
-- FRONTEND_ORIGIN — frontend origin allowed for CORS (default http://localhost:5173)
-
-Start the server with: npm run server
-
-Do NOT commit secrets to the repository. Use .env (local) or repository secrets/CI variables for CI/deploy.
+Do not commit secrets. Use `.env.local` locally and Vercel Environment
+Variables for deployments.
 
 ## CI
 
@@ -38,4 +33,3 @@ A lockfile has been generated to make installs reproducible (package-lock.json).
 ## Contributing
 
 Please open issues or PRs for changes. Small accessibility, linting, and test improvements are welcome.
-  

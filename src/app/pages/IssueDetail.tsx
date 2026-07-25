@@ -41,7 +41,7 @@ export default function IssueDetail() {
     setDownloading(true);
     setError("");
     try {
-      const url = await getMagazinePdfLink(issue.pdfPath);
+      const url = await getMagazinePdfLink(issue.pdfPath, issue.id);
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "The PDF could not be opened.");

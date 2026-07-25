@@ -332,6 +332,7 @@ export default function UploadPage() {
     if (!allDone) { setFormError(t("upload.err_wait")); return; }
     if (!user) { setFormError("Please sign in again before uploading."); return; }
     setSubmitting(true);
+    setFiles((previous) => previous.map((item) => ({ ...item, status: "uploading", progress: 10 })));
     try {
       await createMagazineDraft({
         title: form.title,
@@ -345,8 +346,10 @@ export default function UploadPage() {
         cover: coverFile,
         userId: user.id,
       });
+      setFiles((previous) => previous.map((item) => ({ ...item, status: "done", progress: 100 })));
       setSubmitted(true);
     } catch (requestError) {
+      setFiles((previous) => previous.map((item) => ({ ...item, status: "error", progress: 0 })));
       setFormError(requestError instanceof Error ? requestError.message : "Upload failed. Please try again.");
     } finally {
       setSubmitting(false);
