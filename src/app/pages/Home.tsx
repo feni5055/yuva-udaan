@@ -1,17 +1,14 @@
 import { useState } from "react";
 import {
   Upload, BookOpen, ChevronDown, Menu,
-  Eye, Lock, FileText, Trash2, Moon, Sun, Languages,
+  Lock, FileText, Trash2, Moon, Sun, Languages,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { getMagazines, deleteMagazine, type StoredMagazine } from "../magazineStore";
 import { useTheme, useLang, useAuth, CATEGORY_OPTIONS } from "../AppContext";
-import { publishedIssues } from "../issueCatalog";
 
 const member1 = new URL("../../imports/PHOTO-2026-07-17-20-56-35.jpg", import.meta.url).href;
 const member2 = new URL("../../imports/Untitled-11.jpg", import.meta.url).href;
-
-const issues = publishedIssues;
 
 // ── NavBar ─────────────────────────────────────────────────────────────────
 
@@ -155,8 +152,9 @@ function NavBar() {
 
 function Hero() {
   const { t } = useLang();
-  const uploadedCount = getMagazines().length;
-  const totalIssues = issues.length + uploadedCount;
+  const magazines = getMagazines();
+  const totalIssues = magazines.length;
+  const featuredMagazines = magazines.filter((magazine) => magazine.coverUrl).slice(0, 2);
   const totalContributors = 2; // real team members shown on this site
 
   const stats = [
@@ -191,17 +189,24 @@ function Hero() {
           </div>
         </div>
 
-        <div className="relative hidden md:block">
+        <div className="relative hidden md:flex min-h-72 items-center justify-center">
           <div className="absolute -top-4 -right-4 w-64 h-80 bg-accent/10 rounded-sm" />
           <div className="absolute -bottom-4 -left-4 w-48 h-64 bg-primary/8 rounded-sm" />
-          <div className="relative flex gap-4 justify-center">
-            <div className="w-40 h-56 overflow-hidden shadow-xl rounded-sm mt-8 bg-muted">
-              <img src={issues[0].cover} alt={issues[0].title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+          {featuredMagazines.length > 0 ? (
+            <div className="relative flex gap-4 justify-center">
+              {featuredMagazines.map((magazine, index) => (
+                <div key={magazine.id} className={`w-40 h-56 overflow-hidden shadow-xl rounded-sm bg-muted ${index === 0 ? "mt-8" : ""}`}>
+                  <img src={magazine.coverUrl} alt={magazine.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                </div>
+              ))}
             </div>
-            <div className="w-40 h-56 overflow-hidden shadow-xl rounded-sm bg-muted">
-              <img src={issues[1].cover} alt={issues[1].title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+          ) : (
+            <div className="relative w-56 h-72 border border-border bg-card shadow-xl flex flex-col items-center justify-center text-center px-8">
+              <BookOpen size={42} className="text-primary mb-4" />
+              <p className="font-display font-bold text-xl text-primary">Hindi Club</p>
+              <p className="font-body text-sm text-muted-foreground mt-1">New issues coming soon</p>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -221,24 +226,22 @@ function LatestIssue() {
   const { t } = useLang();
   const uploaded = getMagazines();
   const latest = uploaded[0];
-  const cover = latest?.coverUrl ?? issues[0].cover;
-  const title = latest?.title ?? issues[0].title;
-  const subtitle = latest?.subtitle ?? issues[0].subtitle;
-  const category = latest?.category ?? issues[0].category;
-  const volume = latest?.volume ?? issues[0].volume;
-  const year = latest?.year ?? issues[0].year;
+
+  if (!latest) return null;
 
   return (
     <section className="py-16 bg-primary text-primary-foreground">
       <div className="max-w-6xl mx-auto px-5 grid md:grid-cols-[180px_1fr] gap-8 items-center">
-        <img src={cover} alt={title} className="w-36 md:w-44 aspect-[3/4] object-cover shadow-2xl mx-auto md:mx-0" />
+        <div className="w-36 md:w-44 aspect-[3/4] bg-white/10 shadow-2xl mx-auto md:mx-0 overflow-hidden flex items-center justify-center">
+          {latest.coverUrl ? <img src={latest.coverUrl} alt={latest.title} className="w-full h-full object-cover" /> : <FileText size={38} className="text-primary-foreground/70" />}
+        </div>
         <div className="text-center md:text-left">
           <p className="text-primary-foreground/70 text-xs tracking-[0.2em] uppercase font-body mb-3">{t("issues.latest")}</p>
-          <h2 className="text-3xl md:text-4xl font-display font-bold mb-2">{title}</h2>
-          {subtitle && <p className="text-primary-foreground/75 font-body mb-5">{subtitle}</p>}
+          <h2 className="text-3xl md:text-4xl font-display font-bold mb-2">{latest.title}</h2>
+          {latest.subtitle && <p className="text-primary-foreground/75 font-body mb-5">{latest.subtitle}</p>}
           <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-6 text-xs font-body">
-            <span className="bg-white/10 px-3 py-1.5">{category}</span>
-            <span className="bg-white/10 px-3 py-1.5">{volume} · {year}</span>
+            {latest.category && <span className="bg-white/10 px-3 py-1.5">{latest.category}</span>}
+            <span className="bg-white/10 px-3 py-1.5">Vol. {latest.volume} · {latest.year}</span>
           </div>
           <a href="#issues" className="inline-flex items-center gap-2 border border-primary-foreground/40 px-4 py-2.5 text-sm hover:bg-white/10 transition-colors font-body">
             <BookOpen size={14} /> {t("issues.latest_cta")}
@@ -342,7 +345,6 @@ function UploadedCard({ mag, onDelete }: { mag: StoredMagazine; onDelete: () => 
 
 function IssuesSection({ activeCategory }: { activeCategory: string }) {
   const { t } = useLang();
-  const navigate = useNavigate();
   const [uploaded, setUploaded] = useState<StoredMagazine[]>(() => getMagazines());
 
   const handleDelete = (id: string) => {
@@ -350,9 +352,8 @@ function IssuesSection({ activeCategory }: { activeCategory: string }) {
     setUploaded(getMagazines());
   };
 
-  const totalCount = issues.length + uploaded.length;
+  const totalCount = uploaded.length;
   const filteredUploaded = activeCategory ? uploaded.filter((mag) => mag.category === activeCategory) : uploaded;
-  const filteredIssues = activeCategory ? issues.filter((issue) => issue.category === activeCategory) : issues;
 
   return (
     <section id="issues" className="py-20 border-t border-border scroll-mt-20">
@@ -368,28 +369,8 @@ function IssuesSection({ activeCategory }: { activeCategory: string }) {
           {filteredUploaded.map((mag) => (
             <UploadedCard key={mag.id} mag={mag} onDelete={() => handleDelete(mag.id)} />
           ))}
-          {filteredIssues.map((issue) => (
-            <button type="button" key={issue.id} className="group text-left" onClick={() => navigate(`/issues/${issue.id}`)}>
-              <div className="relative overflow-hidden rounded-sm bg-muted mb-4 shadow-md" style={{ aspectRatio: "3/4" }}>
-                <img src={issue.cover} alt={issue.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="flex items-center gap-2 bg-white/90 text-foreground text-sm px-4 py-2 rounded-full shadow-lg font-body">
-                    <Eye size={14} /> {t("issues.view")}
-                  </div>
-                </div>
-                <div className="absolute bottom-4 left-4 right-4">
-                  <span className="text-white/80 text-xs tracking-widest uppercase font-body">{issue.volume} · {issue.year}</span>
-                  <h3 className="text-white text-xl mt-1 font-display font-bold">{issue.title}</h3>
-                </div>
-                <div className="absolute top-3 right-3 bg-white/95 text-xs px-2 py-1 rounded-sm text-foreground font-body">{issue.pages}p</div>
-              </div>
-              <div className="text-muted-foreground text-xs uppercase tracking-widest mb-1 font-body">{issue.subtitle}</div>
-              <div className="text-sm text-foreground font-body">{t("issues.category")}: {issue.category}</div>
-            </button>
-          ))}
         </div>
-        {filteredUploaded.length + filteredIssues.length === 0 && <p className="py-10 text-center text-muted-foreground font-body">No issues are available in this category yet.</p>}
+        {filteredUploaded.length === 0 && <p className="py-10 text-center text-muted-foreground font-body">No issues are available in this category yet.</p>}
       </div>
     </section>
   );
