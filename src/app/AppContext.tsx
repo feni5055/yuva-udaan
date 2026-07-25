@@ -182,7 +182,7 @@ const T: Record<string, Record<Lang, string>> = {
   "upload.guide4":        { en: "Include a cover page as the first page",    hi: "पहले पृष्ठ के रूप में एक कवर पृष्ठ शामिल करें" },
   "upload.guide5":        { en: "Review editorial guidelines before submitting", hi: "जमा करने से पहले संपादकीय दिशानिर्देश देखें" },
   "upload.title":         { en: "Issue Title",                 hi: "अंक शीर्षक" },
-  "upload.title_ph":      { en: "e.g. दीपावली अंक",           hi: "जैसे दीपावली अंक" },
+  "upload.title_ph":      { en: "e.g. युवा स्वर अंक",          hi: "जैसे युवा स्वर अंक" },
   "upload.subtitle":      { en: "English Subtitle",            hi: "अंग्रेज़ी उपशीर्षक" },
   "upload.subtitle_ph":   { en: "e.g. Diwali Special Edition", hi: "जैसे Diwali Special Edition" },
   "upload.volume":        { en: "Volume",                      hi: "खंड" },
