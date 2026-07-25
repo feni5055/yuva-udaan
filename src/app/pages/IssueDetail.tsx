@@ -1,14 +1,12 @@
 import { ArrowLeft, BookOpen, Download, FileText, Users } from "lucide-react";
 import { Link, useParams } from "react-router";
-import { publishedIssues } from "../issueCatalog";
 import { getMagazines } from "../magazineStore";
 
 export default function IssueDetail() {
   const { id } = useParams();
   const savedIssue = getMagazines().find((magazine) => magazine.id === id);
-  const publishedIssue = publishedIssues.find((issue) => issue.id === id);
 
-  if (!savedIssue && !publishedIssue) {
+  if (!savedIssue) {
     return (
       <main className="min-h-screen bg-background text-foreground flex items-center justify-center px-5">
         <div className="text-center max-w-sm">
@@ -20,20 +18,18 @@ export default function IssueDetail() {
     );
   }
 
-  const issue = publishedIssue ?? {
-    id: savedIssue!.id,
-    title: savedIssue!.title,
-    subtitle: savedIssue!.subtitle,
-    year: savedIssue!.year,
-    volume: `Vol. ${savedIssue!.volume}`,
-    cover: savedIssue!.coverUrl,
-    category: savedIssue!.category || "Uncategorised",
+  const issue = {
+    id: savedIssue.id,
+    title: savedIssue.title,
+    subtitle: savedIssue.subtitle,
+    year: savedIssue.year,
+    volume: `Vol. ${savedIssue.volume}`,
+    cover: savedIssue.coverUrl,
+    category: savedIssue.category || "Uncategorised",
     theme: "",
     pages: undefined,
-    editors: savedIssue!.editors,
+    editors: savedIssue.editors,
   };
-
-  const related = publishedIssues.filter((candidate) => candidate.category === issue.category && candidate.id !== issue.id).slice(0, 2);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -60,7 +56,6 @@ export default function IssueDetail() {
           <button disabled className="inline-flex items-center gap-2 bg-muted text-muted-foreground px-5 py-3 text-sm cursor-not-allowed font-body" title="PDF files will be connected in the storage phase"><Download size={15} /> PDF coming soon</button>
         </div>
       </section>
-      {related.length > 0 && <section className="border-t border-border py-14"><div className="max-w-5xl mx-auto px-5"><h2 className="text-2xl font-display font-bold mb-6">More in {issue.category}</h2><div className="grid sm:grid-cols-2 gap-5">{related.map((relatedIssue) => <Link key={relatedIssue.id} to={`/issues/${relatedIssue.id}`} className="flex gap-4 border border-border bg-card p-4 hover:border-accent transition-colors"><img src={relatedIssue.cover} alt="" className="w-16 aspect-[3/4] object-cover" /><span><span className="block text-lg font-display font-bold">{relatedIssue.title}</span><span className="text-sm text-muted-foreground font-body">{relatedIssue.subtitle}</span></span></Link>)}</div></div></section>}
       <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground font-body"><BookOpen size={13} className="inline mr-1" /> Hindi Club Magazine</footer>
     </main>
   );
