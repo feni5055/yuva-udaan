@@ -398,6 +398,8 @@ function SignInToBanner() {
 
 // ── Contributors ───────────────────────────────────────────────────────────
 
+const TEAM_ROLES = new Set(["team leader", "technical head"]);
+
 function ContributorsSection({ authors }: { authors: Author[] }) {
   const { t } = useLang();
   const orderedAuthors = [...authors].sort((a, b) => {
@@ -565,15 +567,17 @@ export default function Home() {
     };
   }, []);
 
+  const teamMembers = authors.filter((author) => TEAM_ROLES.has(author.bio.trim().toLowerCase()));
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <NavBar />
-      <Hero magazines={magazines} contributorCount={authors.length} />
+      <Hero magazines={magazines} contributorCount={teamMembers.length} />
       <LatestIssue magazines={magazines} />
       <CategoriesSection activeCategory={activeCategory} categories={categories} onSelect={setActiveCategory} />
       <IssuesSection activeCategory={activeCategory} magazines={magazines} loading={loading} error={error} />
       <SignInToBanner />
-      <ContributorsSection authors={authors} />
+      <ContributorsSection authors={teamMembers} />
       <FaqSection />
       <ContactSection />
       <Footer />
