@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { ExternalLink, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ExternalLink, LoaderCircle, RefreshCw, ShieldCheck, Undo2 } from "lucide-react";
 import { useAuth } from "../AppContext";
 import {
   getAdminData,
@@ -28,6 +28,7 @@ export default function Admin() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [updatingMagazineId, setUpdatingMagazineId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -68,6 +69,18 @@ export default function Admin() {
       setError(requestError instanceof Error ? requestError.message : "The PDF preview could not be opened.");
     } finally {
       setPreviewingId(null);
+    }
+  };
+
+  const changeMagazineStatus = async (magazineId: string, status: PublicationStatus) => {
+    setUpdatingMagazineId(magazineId);
+    try {
+      await mutate(
+        () => updateMagazineStatus(magazineId, status),
+        status === "published" ? "Magazine approved and published." : "Magazine unpublished and returned to the review queue.",
+      );
+    } finally {
+      setUpdatingMagazineId(null);
     }
   };
 
@@ -157,6 +170,13 @@ export default function Admin() {
                     <div className="flex-1">
                       <p className="font-display font-semibold">{magazine.title}</p>
                       <p className="text-xs text-muted-foreground font-body">{magazine.category || "Uncategorised"} · Vol. {magazine.volume} · {magazine.year}</p>
+                      <span className={`inline-flex mt-2 px-2 py-1 text-[11px] uppercase tracking-wider font-body ${
+                        magazine.status === "published"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-secondary text-secondary-foreground"
+                      }`}>
+                        {magazine.status === "published" ? "Published" : "Pending review"}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -169,14 +189,26 @@ export default function Admin() {
                         : <ExternalLink size={14} />}
                       Preview PDF
                     </button>
-                    <select
-                      value={magazine.status}
-                      aria-label={`Status for ${magazine.title}`}
-                      onChange={(event) => void mutate(() => updateMagazineStatus(magazine.id, event.target.value as PublicationStatus), "Magazine status updated.")}
-                      className="bg-input-background border border-border px-3 py-2 text-sm font-body"
+                    <button
+                      type="button"
+                      disabled={updatingMagazineId === magazine.id}
+                      onClick={() => void changeMagazineStatus(
+                        magazine.id,
+                        magazine.status === "published" ? "draft" : "published",
+                      )}
+                      className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-body disabled:opacity-40 ${
+                        magazine.status === "published"
+                          ? "border border-border"
+                          : "bg-primary text-primary-foreground"
+                      }`}
                     >
-                      {publicationStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
-                    </select>
+                      {updatingMagazineId === magazine.id
+                        ? <LoaderCircle size={14} className="animate-spin" />
+                        : magazine.status === "published"
+                          ? <Undo2 size={14} />
+                          : <CheckCircle2 size={14} />}
+                      {magazine.status === "published" ? "Unpublish" : "Approve & Publish"}
+                    </button>
                   </div>
                 ))}
                 {data.magazines.length === 0 && <EmptyRow message="No magazine submissions yet." />}
