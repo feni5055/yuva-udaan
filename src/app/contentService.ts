@@ -174,11 +174,16 @@ async function uploadToR2(file: File, kind: "pdf" | "cover"): Promise<string> {
     size: file.size,
     kind,
   });
-  const upload = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": file.type },
-    body: file,
-  });
+  let upload: Response;
+  try {
+    upload = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+  } catch {
+    throw new Error("The storage connection was blocked. Please retry in a moment.");
+  }
   if (!upload.ok) throw new Error(`The ${kind === "pdf" ? "PDF" : "cover image"} could not be uploaded.`);
   return key;
 }
