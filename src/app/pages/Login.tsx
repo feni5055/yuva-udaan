@@ -128,9 +128,9 @@ export default function Login() {
                 <label className="block text-xs uppercase tracking-widest text-muted-foreground font-body">
                   {t("login.password")}
                 </label>
-                <a href="#" className="text-xs text-accent hover:underline underline-offset-2 font-body">
+                <Link to="/forgot-password" className="text-xs text-accent hover:underline underline-offset-2 font-body">
                   {t("login.forgot")}
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />

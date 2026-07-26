@@ -278,9 +278,9 @@ export default function SignUp() {
                 />
                 <span className="text-xs text-muted-foreground leading-relaxed font-body">
                   {t("signup.terms")}{" "}
-                  <a href="#" className="text-accent underline underline-offset-2" onClick={(e) => e.stopPropagation()}>{t("signup.terms_tos")}</a>
+                  <Link to="/terms" className="text-accent underline underline-offset-2" onClick={(e) => e.stopPropagation()}>{t("signup.terms_tos")}</Link>
                   {" "}{t("signup.terms_and")}{" "}
-                  <a href="#" className="text-accent underline underline-offset-2" onClick={(e) => e.stopPropagation()}>{t("signup.terms_pp")}</a>
+                  <Link to="/privacy" className="text-accent underline underline-offset-2" onClick={(e) => e.stopPropagation()}>{t("signup.terms_pp")}</Link>
                 </span>
               </label>
               {errors.agreed && <p className="text-destructive text-xs mt-1 font-body">{errors.agreed}</p>}

@@ -531,7 +531,7 @@ function FaqSection() {
   ];
 
   return (
-    <section className="py-20 bg-secondary border-t border-border">
+    <section id="faq" className="py-20 bg-secondary border-t border-border scroll-mt-20">
       <div className="max-w-3xl mx-auto px-5">
         <div className="text-center mb-12">
           <div className="text-accent text-xs tracking-[0.2em] uppercase mb-2 font-medium font-body">— {t("faq.eyebrow")}</div>
@@ -567,9 +567,9 @@ function Footer() {
           <span className="text-sm text-muted-foreground font-body">{t("footer.copy")}</span>
         </div>
         <div className="flex items-center gap-6 text-xs text-muted-foreground font-body">
-          <a href="#" className="hover:text-accent transition-colors">{t("footer.privacy")}</a>
-          <a href="#" className="hover:text-accent transition-colors">{t("footer.contact")}</a>
-          <a href="#" className="hover:text-accent transition-colors">{t("footer.guide")}</a>
+          <a href="/privacy" className="hover:text-accent transition-colors">{t("footer.privacy")}</a>
+          <a href="/#contact" className="hover:text-accent transition-colors">{t("footer.contact")}</a>
+          <a href="/#faq" className="hover:text-accent transition-colors">{t("footer.guide")}</a>
         </div>
       </div>
     </footer>
