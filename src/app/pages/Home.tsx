@@ -399,7 +399,13 @@ function SignInToBanner() {
 // ── Contributors ───────────────────────────────────────────────────────────
 
 function ContributorsSection({ authors }: { authors: Author[] }) {
-  const leadershipOrder = ["ravi raj mishra", "priyadarshini pradhan", "j.dilip sharma", "r.varshaa"];
+  const leadershipOrder = [
+    "ravi raj mishra",
+    "priyadarshini pradhan",
+    "j.dilip sharma",
+    "r.varshaa",
+    "balamuruga ramesh",
+  ];
   const leadership = authors
     .filter((author) => author.bio.toLowerCase().includes("leader"))
     .sort((a, b) => {
