@@ -399,32 +399,62 @@ function SignInToBanner() {
 // ── Contributors ───────────────────────────────────────────────────────────
 
 function ContributorsSection({ authors }: { authors: Author[] }) {
-  const { t } = useLang();
-  const orderedAuthors = [...authors].sort((a, b) => {
-    const roleRank = (role: string) => role.toLowerCase() === "team leader" ? 0 : 1;
-    return roleRank(a.bio) - roleRank(b.bio) || a.displayName.localeCompare(b.displayName);
-  });
+  const leadershipOrder = ["ravi raj mishra", "priyadarshini pradhan"];
+  const leadership = authors
+    .filter((author) => author.bio.toLowerCase().includes("leader"))
+    .sort((a, b) => {
+      const rank = (name: string) => {
+        const index = leadershipOrder.indexOf(name.toLowerCase());
+        return index === -1 ? leadershipOrder.length : index;
+      };
+      return rank(a.displayName) - rank(b.displayName) || a.displayName.localeCompare(b.displayName);
+    });
+  const technicalMembers = authors
+    .filter((author) => !author.bio.toLowerCase().includes("leader"))
+    .sort((a, b) => {
+      const roleRank = (role: string) => role.toLowerCase() === "technical head" ? 0 : 1;
+      return roleRank(a.bio) - roleRank(b.bio) || a.displayName.localeCompare(b.displayName);
+    });
+
+  const renderMember = (author: Author) => (
+    <div key={author.id} className="text-center group">
+      <div className="w-24 h-24 rounded-full overflow-hidden mx-auto mb-3 ring-2 ring-border group-hover:ring-accent transition-all bg-muted">
+        {author.avatarUrl ? (
+          <img src={author.avatarUrl} alt={author.displayName} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-2xl font-display text-primary">{author.displayName.slice(0, 1).toUpperCase()}</div>
+        )}
+      </div>
+      <div className="text-foreground text-base font-display font-semibold">{author.displayName}</div>
+      <div className="text-muted-foreground text-xs mt-0.5 font-body">{author.bio}</div>
+    </div>
+  );
 
   return (
     <section id="contributors" className="py-20 border-t border-border scroll-mt-20">
       <div className="max-w-6xl mx-auto px-5">
-        <div className="text-center mb-12">
-          <div className="text-accent text-xs tracking-[0.2em] uppercase font-medium font-body">— {t("team.eyebrow")}</div>
+        <div className="text-center mb-14">
+          <div className="text-accent text-xs tracking-[0.2em] uppercase font-medium font-body">— Our Team</div>
         </div>
-        <div className="flex justify-center gap-16">
-          {orderedAuthors.map((author) => (
-            <div key={author.id} className="text-center group">
-              <div className="w-24 h-24 rounded-full overflow-hidden mx-auto mb-3 ring-2 ring-border group-hover:ring-accent transition-all bg-muted">
-                {author.avatarUrl ? (
-                  <img src={author.avatarUrl} alt={author.displayName} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-2xl font-display text-primary">{author.displayName.slice(0, 1).toUpperCase()}</div>
-                )}
+
+        <div className="space-y-16">
+          {leadership.length > 0 && (
+            <div>
+              <h3 className="text-center text-xl font-display font-bold text-foreground mb-8">Leadership</h3>
+              <div className="flex flex-wrap justify-center gap-x-16 gap-y-10">
+                {leadership.map(renderMember)}
               </div>
-              <div className="text-foreground text-base font-display font-semibold">{author.displayName}</div>
-              <div className="text-muted-foreground text-xs mt-0.5 font-body">{author.bio || t("team.role")}</div>
             </div>
-          ))}
+          )}
+
+          {technicalMembers.length > 0 && (
+            <div>
+              <h3 className="text-center text-xl font-display font-bold text-foreground mb-8">Technical Members</h3>
+              <div className="flex flex-wrap justify-center gap-x-16 gap-y-10">
+                {technicalMembers.map(renderMember)}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </section>
