@@ -328,6 +328,20 @@ export async function createMagazineDraft(input: CreateMagazineInput): Promise<M
   return mapMagazine(data as MagazineRow);
 }
 
+export async function listMyMagazines(userId: string): Promise<Magazine[]> {
+  const { data, error } = await supabase
+    .from("magazines")
+    .select("*")
+    .eq("created_by", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as MagazineRow[]).map(mapMagazine);
+}
+
+export async function deleteMagazine(id: string): Promise<void> {
+  await authenticatedRequest<{ ok: true }>("/api/r2/delete-magazine", { magazineId: id });
+}
+
 export async function listPublishedArticles(magazineId?: string): Promise<Article[]> {
   let query = supabase
     .from("articles")

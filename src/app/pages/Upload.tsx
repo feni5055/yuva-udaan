@@ -1,10 +1,16 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { useAuth, useLang, LangToggle, ThemeToggle, THEME_OPTIONS } from "../AppContext";
-import { createMagazineDraft } from "../contentService";
+import {
+  createMagazineDraft,
+  deleteMagazine,
+  listMyMagazines,
+  type Magazine,
+} from "../contentService";
 import {
   BookOpen, Upload, FileText, X, CheckCircle,
   AlertCircle, ChevronLeft, Calendar, Users, Hash, ImagePlus, ChevronDown,
+  LoaderCircle, Trash2,
 } from "lucide-react";
 
 interface UploadedFile {
@@ -272,7 +278,7 @@ function FileRow({ item, onRemove }: { item: UploadedFile; onRemove: () => void 
         </div>
       </div>
       {item.status !== "uploading" && (
-        <button onClick={onRemove} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
+        <button type="button" onClick={onRemove} aria-label={`Remove ${item.file.name}`} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
           <X size={16} />
         </button>
       )}
@@ -294,6 +300,38 @@ export default function UploadPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [myMagazines, setMyMagazines] = useState<Magazine[]>([]);
+  const [loadingMyMagazines, setLoadingMyMagazines] = useState(false);
+  const [deletingMagazineId, setDeletingMagazineId] = useState<string | null>(null);
+  const [myMagazinesError, setMyMagazinesError] = useState("");
+  const userId = user?.id;
+
+  useEffect(() => {
+    if (!userId) {
+      setMyMagazines([]);
+      return;
+    }
+
+    let active = true;
+    setLoadingMyMagazines(true);
+    setMyMagazinesError("");
+    void listMyMagazines(userId)
+      .then((magazines) => {
+        if (active) setMyMagazines(magazines);
+      })
+      .catch((requestError) => {
+        if (active) {
+          setMyMagazinesError(requestError instanceof Error ? requestError.message : "Your uploads could not be loaded.");
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingMyMagazines(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   const handleFiles = (incoming: File[]) => {
     const validFiles = incoming.filter((file) => file.type === "application/pdf" && file.size <= 50 * 1024 * 1024).slice(0, 1);
@@ -334,7 +372,7 @@ export default function UploadPage() {
     setSubmitting(true);
     setFiles((previous) => previous.map((item) => ({ ...item, status: "uploading", progress: 10 })));
     try {
-      await createMagazineDraft({
+      const createdMagazine = await createMagazineDraft({
         title: form.title,
         subtitle: form.subtitle,
         volume: form.volume,
@@ -346,6 +384,7 @@ export default function UploadPage() {
         cover: coverFile,
         userId: user.id,
       });
+      setMyMagazines((previous) => [createdMagazine, ...previous]);
       setFiles((previous) => previous.map((item) => ({ ...item, status: "done", progress: 100 })));
       setSubmitted(true);
     } catch (requestError) {
@@ -353,6 +392,29 @@ export default function UploadPage() {
       setFormError(requestError instanceof Error ? requestError.message : "Upload failed. Please try again.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const removeUploadedMagazine = async (magazine: Magazine) => {
+    if (magazine.status !== "draft") {
+      setMyMagazinesError("Magazines already under editorial control can only be deleted by an administrator.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Permanently delete “${magazine.title}”? This removes its PDF, cover image, and submission.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingMagazineId(magazine.id);
+    setMyMagazinesError("");
+    try {
+      await deleteMagazine(magazine.id);
+      setMyMagazines((previous) => previous.filter((item) => item.id !== magazine.id));
+    } catch (requestError) {
+      setMyMagazinesError(requestError instanceof Error ? requestError.message : "The upload could not be deleted.");
+    } finally {
+      setDeletingMagazineId(null);
     }
   };
 
@@ -427,6 +489,52 @@ export default function UploadPage() {
           <h1 className="text-4xl text-foreground mb-2 font-display font-bold">{t("upload.heading")}</h1>
           <p className="text-muted-foreground text-sm font-body">{t("upload.subheading")}</p>
         </div>
+
+        <section className="mb-10 border border-border bg-card p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-lg font-display font-bold text-foreground">Your uploads</h2>
+              <p className="text-xs text-muted-foreground font-body mt-1">Delete your unpublished PDF submissions here.</p>
+            </div>
+            {loadingMyMagazines && <LoaderCircle size={17} className="animate-spin text-muted-foreground" />}
+          </div>
+
+          {myMagazinesError && (
+            <p role="alert" className="text-xs text-destructive font-body mb-3">{myMagazinesError}</p>
+          )}
+
+          {!loadingMyMagazines && myMagazines.length === 0 && (
+            <p className="text-sm text-muted-foreground font-body">You have not uploaded any magazines yet.</p>
+          )}
+
+          <div className="space-y-3">
+            {myMagazines.map((magazine) => (
+              <div key={magazine.id} className="flex flex-col sm:flex-row sm:items-center gap-3 border-t border-border pt-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-display font-semibold text-foreground truncate">{magazine.title}</p>
+                  <p className="text-xs text-muted-foreground font-body mt-0.5">
+                    Vol. {magazine.volume} · {magazine.year} · {magazine.status === "published" ? "Published" : "Pending review"}
+                  </p>
+                </div>
+                {magazine.status !== "draft" ? (
+                  <span className="text-xs text-muted-foreground font-body">Admin deletion required</span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={deletingMagazineId === magazine.id}
+                    onClick={() => void removeUploadedMagazine(magazine)}
+                    className="inline-flex items-center justify-center gap-1.5 border border-destructive/40 text-destructive px-3 py-2 text-sm font-body hover:bg-destructive/10 disabled:opacity-40"
+                  >
+                    {deletingMagazineId === magazine.id
+                      ? <LoaderCircle size={14} className="animate-spin" />
+                      : <Trash2 size={14} />}
+                    Delete upload
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
 
         <form onSubmit={handlePublish}>
           <div className="grid md:grid-cols-5 gap-8">

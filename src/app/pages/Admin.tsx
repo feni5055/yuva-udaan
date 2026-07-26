@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { CheckCircle2, ExternalLink, LoaderCircle, RefreshCw, ShieldCheck, Undo2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, LoaderCircle, RefreshCw, ShieldCheck, Trash2, Undo2 } from "lucide-react";
 import { useAuth } from "../AppContext";
 import {
+  deleteMagazine,
   getAdminData,
   getMagazinePdfLink,
   updateArticleStatus,
@@ -29,6 +30,7 @@ export default function Admin() {
   const [notice, setNotice] = useState("");
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [updatingMagazineId, setUpdatingMagazineId] = useState<string | null>(null);
+  const [deletingMagazineId, setDeletingMagazineId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -81,6 +83,23 @@ export default function Admin() {
       );
     } finally {
       setUpdatingMagazineId(null);
+    }
+  };
+
+  const removeMagazine = async (magazineId: string, title: string) => {
+    const confirmed = window.confirm(
+      `Permanently delete “${title}”? This removes its PDF, cover image, and database record.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingMagazineId(magazineId);
+    try {
+      await mutate(
+        () => deleteMagazine(magazineId),
+        "Magazine and uploaded files deleted.",
+      );
+    } finally {
+      setDeletingMagazineId(null);
     }
   };
 
@@ -191,7 +210,7 @@ export default function Admin() {
                     </button>
                     <button
                       type="button"
-                      disabled={updatingMagazineId === magazine.id}
+                      disabled={updatingMagazineId === magazine.id || deletingMagazineId === magazine.id}
                       onClick={() => void changeMagazineStatus(
                         magazine.id,
                         magazine.status === "published" ? "draft" : "published",
@@ -208,6 +227,17 @@ export default function Admin() {
                           ? <Undo2 size={14} />
                           : <CheckCircle2 size={14} />}
                       {magazine.status === "published" ? "Unpublish" : "Approve & Publish"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deletingMagazineId === magazine.id || updatingMagazineId === magazine.id}
+                      onClick={() => void removeMagazine(magazine.id, magazine.title)}
+                      className="inline-flex items-center justify-center gap-1.5 border border-destructive/40 text-destructive px-3 py-2 text-sm font-body hover:bg-destructive/10 disabled:opacity-40"
+                    >
+                      {deletingMagazineId === magazine.id
+                        ? <LoaderCircle size={14} className="animate-spin" />
+                        : <Trash2 size={14} />}
+                      Delete
                     </button>
                   </div>
                 ))}
