@@ -398,8 +398,6 @@ function SignInToBanner() {
 
 // ── Contributors ───────────────────────────────────────────────────────────
 
-const TEAM_ROLES = new Set(["team leader", "technical head"]);
-
 function ContributorsSection({ authors }: { authors: Author[] }) {
   const { t } = useLang();
   const orderedAuthors = [...authors].sort((a, b) => {
@@ -567,7 +565,7 @@ export default function Home() {
     };
   }, []);
 
-  const teamMembers = authors.filter((author) => TEAM_ROLES.has(author.bio.trim().toLowerCase()));
+  const teamMembers = authors.filter((author) => author.bio.trim().length > 0);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
