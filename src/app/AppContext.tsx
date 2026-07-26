@@ -226,6 +226,8 @@ const T: Record<string, Record<Lang, string>> = {
   "upload.success_p2":    { en: "The editorial board will review and publish it to the magazine archive.", hi: "संपादकीय बोर्ड इसकी समीक्षा करके पत्रिका संग्रह में प्रकाशित करेगा।" },
   "upload.another":       { en: "Upload Another",              hi: "और अपलोड करें" },
   "upload.view_mag":      { en: "View Magazine",               hi: "पत्रिका देखें" },
+  "upload.delete_submission": { en: "Delete This Submission",  hi: "यह जमा हटाएं" },
+  "upload.deleting":      { en: "Deleting…",                   hi: "हटाया जा रहा है…" },
   "upload.done":          { en: "Uploaded",                    hi: "अपलोड हुआ" },
   "upload.failed":        { en: "Failed",                      hi: "असफल" },
 };

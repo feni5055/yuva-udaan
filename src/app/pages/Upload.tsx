@@ -298,6 +298,7 @@ export default function UploadPage() {
   const [theme, setTheme] = useState("");
   const [form, setForm] = useState({ title: "", subtitle: "", volume: "", year: new Date().getFullYear().toString(), publishDate: "", editors: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [submittedMagazine, setSubmittedMagazine] = useState<Magazine | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [myMagazines, setMyMagazines] = useState<Magazine[]>([]);
@@ -355,8 +356,10 @@ export default function UploadPage() {
     setCoverUrl(null);
     setCoverFile(null);
     setTheme("");
+    setSubmittedMagazine(null);
     setForm({ title: "", subtitle: "", volume: "", year: new Date().getFullYear().toString(), publishDate: "", editors: "" });
     setFormError("");
+    setMyMagazinesError("");
   };
 
   const resolvedCategory = theme === "__other__" ? "" : theme;
@@ -385,6 +388,7 @@ export default function UploadPage() {
         userId: user.id,
       });
       setMyMagazines((previous) => [createdMagazine, ...previous]);
+      setSubmittedMagazine(createdMagazine);
       setFiles((previous) => previous.map((item) => ({ ...item, status: "done", progress: 100 })));
       setSubmitted(true);
     } catch (requestError) {
@@ -398,23 +402,33 @@ export default function UploadPage() {
   const removeUploadedMagazine = async (magazine: Magazine) => {
     if (magazine.status !== "draft") {
       setMyMagazinesError("Magazines already under editorial control can only be deleted by an administrator.");
-      return;
+      return false;
     }
 
     const confirmed = window.confirm(
       `Permanently delete “${magazine.title}”? This removes its PDF, cover image, and submission.`,
     );
-    if (!confirmed) return;
+    if (!confirmed) return false;
 
     setDeletingMagazineId(magazine.id);
     setMyMagazinesError("");
     try {
       await deleteMagazine(magazine.id);
       setMyMagazines((previous) => previous.filter((item) => item.id !== magazine.id));
+      return true;
     } catch (requestError) {
       setMyMagazinesError(requestError instanceof Error ? requestError.message : "The upload could not be deleted.");
+      return false;
     } finally {
       setDeletingMagazineId(null);
+    }
+  };
+
+  const removeSubmittedMagazine = async () => {
+    if (!submittedMagazine) return;
+    if (await removeUploadedMagazine(submittedMagazine)) {
+      setSubmitted(false);
+      reset();
     }
   };
 
@@ -456,6 +470,9 @@ export default function UploadPage() {
               <strong className="text-foreground">{form.title}</strong> {t("upload.success_p1")}
             </p>
             <p className="text-muted-foreground text-sm leading-relaxed mb-10 font-body">{t("upload.success_p2")}</p>
+            {myMagazinesError && (
+              <p role="alert" className="text-sm text-destructive font-body mb-4">{myMagazinesError}</p>
+            )}
             <div className="flex gap-3">
               <button onClick={() => { setSubmitted(false); reset(); }}
                 className="flex-1 border border-border text-foreground text-sm py-2.5 hover:bg-secondary transition-colors rounded-sm font-body">
@@ -466,6 +483,21 @@ export default function UploadPage() {
                 {t("upload.view_mag")}
               </button>
             </div>
+            {submittedMagazine && (
+              <button
+                type="button"
+                disabled={deletingMagazineId === submittedMagazine.id}
+                onClick={() => void removeSubmittedMagazine()}
+                className="mt-3 w-full inline-flex items-center justify-center gap-2 border border-destructive/40 text-destructive text-sm py-2.5 hover:bg-destructive/10 disabled:opacity-40 rounded-sm font-body"
+              >
+                {deletingMagazineId === submittedMagazine.id
+                  ? <LoaderCircle size={15} className="animate-spin" />
+                  : <Trash2 size={15} />}
+                {deletingMagazineId === submittedMagazine.id
+                  ? t("upload.deleting")
+                  : t("upload.delete_submission")}
+              </button>
+            )}
           </div>
         </div>
       </div>
