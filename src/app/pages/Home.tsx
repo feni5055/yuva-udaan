@@ -447,9 +447,14 @@ function ContributorsSection({ authors }: { authors: Author[] }) {
           {leadership.length > 0 && (
             <div>
               <h3 className="text-center text-xl font-display font-bold text-foreground mb-8">Leadership</h3>
-              <div className="flex flex-wrap justify-center gap-x-16 gap-y-10">
-                {leadership.map(renderMember)}
+              <div className="flex justify-center mb-10">
+                {renderMember(leadership[0])}
               </div>
+              {leadership.length > 1 && (
+                <div className="flex flex-wrap justify-center gap-x-16 gap-y-10">
+                  {leadership.slice(1).map(renderMember)}
+                </div>
+              )}
             </div>
           )}
 
