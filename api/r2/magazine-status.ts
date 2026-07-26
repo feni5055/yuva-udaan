@@ -10,6 +10,7 @@ import { adminSupabase, HttpError, sendApiError } from "../../server/supabaseSer
 
 type PublicationStatus = "draft" | "review" | "published";
 const statuses = new Set<PublicationStatus>(["draft", "review", "published"]);
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function publishValue(value: string | null): Promise<string | null> {
   if (!isPendingR2Key(value)) return value;
@@ -33,7 +34,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
   try {
     const { client } = await adminSupabase(request);
     const { magazineId, status } = request.body ?? {};
-    if (typeof magazineId !== "string" || !statuses.has(status)) {
+    if (typeof magazineId !== "string" || !uuidPattern.test(magazineId) || !statuses.has(status)) {
       throw new HttpError(400, "A valid magazine and status are required.");
     }
 

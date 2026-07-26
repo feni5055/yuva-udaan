@@ -8,6 +8,8 @@ import {
 } from "../../server/r2.js";
 import { authenticatedSupabase, HttpError, sendApiError } from "../../server/supabaseServer.js";
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 async function removeStoredFile(
   client: SupabaseClient,
   value: string | null,
@@ -44,7 +46,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
   try {
     const { client, user } = await authenticatedSupabase(request);
     const magazineId = request.body?.magazineId;
-    if (typeof magazineId !== "string") throw new HttpError(400, "A magazine ID is required.");
+    if (typeof magazineId !== "string" || !uuidPattern.test(magazineId)) {
+      throw new HttpError(400, "A valid magazine ID is required.");
+    }
 
     const [{ data: magazine, error: magazineError }, { data: profile, error: profileError }] = await Promise.all([
       client

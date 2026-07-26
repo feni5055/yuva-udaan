@@ -56,7 +56,11 @@ export async function adminSupabase(request: VercelRequest): Promise<{
 }
 
 export function sendApiError(response: { status: (code: number) => { json: (body: unknown) => void } }, error: unknown): void {
-  const status = error instanceof HttpError ? error.status : 500;
-  const message = error instanceof Error ? error.message : "The request failed.";
+  const isExpected = error instanceof HttpError;
+  const status = isExpected ? error.status : 500;
+  const message = isExpected ? error.message : "The request could not be completed.";
+  if (!isExpected) {
+    console.error("Unexpected API error", error);
+  }
   response.status(status).json({ error: message });
 }
