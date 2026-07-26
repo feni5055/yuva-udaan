@@ -1,27 +1,52 @@
 import { createBrowserRouter } from "react-router";
-import Login from "./pages/Login";
-import Home from "./pages/Home";
-import RequestAccess from "./pages/RequestAccess";
-import UploadPage from "./pages/Upload";
-import Admin from "./pages/Admin";
-import IssueDetail from "./pages/IssueDetail";
-import ArticleDetail from "./pages/ArticleDetail";
-import NotFound from "./pages/NotFound";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import { Privacy, Terms } from "./pages/Policies";
 
 export const router = createBrowserRouter([
-  { path: "/login", Component: Login },
-  { path: "/signup", Component: RequestAccess },
-  { path: "/forgot-password", Component: ForgotPassword },
-  { path: "/reset-password", Component: ResetPassword },
-  { path: "/terms", Component: Terms },
-  { path: "/privacy", Component: Privacy },
-  { path: "/upload", Component: UploadPage },
-  { path: "/admin", Component: Admin },
-  { path: "/issues/:id", Component: IssueDetail },
-  { path: "/articles/:id", Component: ArticleDetail },
-  { path: "/", Component: Home },
-  { path: "*", Component: NotFound },
+  {
+    path: "/login",
+    lazy: async () => ({ Component: (await import("./pages/Login")).default }),
+  },
+  {
+    path: "/signup",
+    lazy: async () => ({ Component: (await import("./pages/RequestAccess")).default }),
+  },
+  {
+    path: "/forgot-password",
+    lazy: async () => ({ Component: (await import("./pages/ForgotPassword")).default }),
+  },
+  {
+    path: "/reset-password",
+    lazy: async () => ({ Component: (await import("./pages/ResetPassword")).default }),
+  },
+  {
+    path: "/terms",
+    lazy: async () => ({ Component: (await import("./pages/Policies")).Terms }),
+  },
+  {
+    path: "/privacy",
+    lazy: async () => ({ Component: (await import("./pages/Policies")).Privacy }),
+  },
+  {
+    path: "/upload",
+    lazy: async () => ({ Component: (await import("./pages/Upload")).default }),
+  },
+  {
+    path: "/admin",
+    lazy: async () => ({ Component: (await import("./pages/Admin")).default }),
+  },
+  {
+    path: "/issues/:id",
+    lazy: async () => ({ Component: (await import("./pages/IssueDetail")).default }),
+  },
+  {
+    path: "/articles/:id",
+    lazy: async () => ({ Component: (await import("./pages/ArticleDetail")).default }),
+  },
+  {
+    path: "/",
+    lazy: async () => ({ Component: (await import("./pages/Home")).default }),
+  },
+  {
+    path: "*",
+    lazy: async () => ({ Component: (await import("./pages/NotFound")).default }),
+  },
 ]);
