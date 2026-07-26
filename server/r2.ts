@@ -2,7 +2,6 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
-  PutBucketCorsCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -28,42 +27,6 @@ const r2 = new S3Client({
   credentials: { accessKeyId, secretAccessKey },
 });
 
-const defaultUploadOrigins = [
-  "https://yuvakalam.vercel.app",
-  "https://yuva-udaan.vercel.app",
-  "https://yuva-udaan-feni5055s-projects.vercel.app",
-];
-const uploadOrigins = (process.env.R2_ALLOWED_ORIGINS ?? defaultUploadOrigins.join(","))
-  .split(",")
-  .map((origin) => origin.trim().replace(/\/+$/, ""))
-  .filter(Boolean);
-let uploadCorsReady: Promise<void> | null = null;
-
-async function ensureUploadCors(): Promise<void> {
-  if (!uploadCorsReady) {
-    uploadCorsReady = r2.send(new PutBucketCorsCommand({
-      Bucket: uploadsBucket,
-      CORSConfiguration: {
-        CORSRules: [{
-          AllowedOrigins: uploadOrigins,
-          AllowedMethods: ["PUT"],
-          AllowedHeaders: ["content-type"],
-          ExposeHeaders: ["etag"],
-          MaxAgeSeconds: 3600,
-        }],
-      },
-    })).then(() => undefined);
-  }
-
-  try {
-    await uploadCorsReady;
-  } catch (error) {
-    uploadCorsReady = null;
-    console.error("R2 upload CORS configuration failed", error);
-    throw error;
-  }
-}
-
 function encodedCopySource(bucket: string, key: string): string {
   const encodedKey = key.split("/").map(encodeURIComponent).join("/");
   return `${bucket}/${encodedKey}`;
@@ -83,7 +46,6 @@ export function publicR2Url(key: string): string {
 }
 
 export async function createUploadUrl(key: string, contentType: string): Promise<string> {
-  await ensureUploadCors();
   return getSignedUrl(
     r2,
     new PutObjectCommand({
