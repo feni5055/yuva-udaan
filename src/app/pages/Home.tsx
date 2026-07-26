@@ -360,7 +360,7 @@ function IssuesSection({ activeCategory, magazines, loading, error }: { activeCa
             {filteredUploaded.map((mag) => <UploadedCard key={mag.id} mag={mag} />)}
           </div>
         )}
-        {!loading && filteredUploaded.length === 0 && <p className="py-10 text-center text-muted-foreground font-body">No published issues are available in this category yet.</p>}
+        {!loading && filteredUploaded.length === 0 && <p className="py-10 text-center text-muted-foreground font-body">No published magazines are available in this category yet.</p>}
         {error && <p role="alert" className="py-4 text-center text-destructive font-body">{error}</p>}
       </div>
     </section>
