@@ -74,6 +74,7 @@
 
   --border: rgba(255,255,255,0.06);
   --input: #2c2422;
+  --input-background: #211d1c; /* matte black for readable form text */
   --ring: #e07a4a;
 
   --font-weight-medium: 500;
