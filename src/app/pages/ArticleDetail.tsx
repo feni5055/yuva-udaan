@@ -10,6 +10,8 @@ import {
   type Comment,
 } from "../contentService";
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export default function ArticleDetail() {
   const { id = "" } = useParams();
   const { isLoggedIn, user } = useAuth();
@@ -22,6 +24,14 @@ export default function ArticleDetail() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!UUID_PATTERN.test(id)) {
+      setArticle(null);
+      setComments([]);
+      setError("This article link is invalid.");
+      setLoading(false);
+      return;
+    }
+
     let active = true;
     void Promise.all([getArticle(id), listComments(id)])
       .then(([articleData, commentData]) => {

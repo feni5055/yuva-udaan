@@ -6,6 +6,7 @@ import UploadPage from "./pages/Upload";
 import Admin from "./pages/Admin";
 import IssueDetail from "./pages/IssueDetail";
 import ArticleDetail from "./pages/ArticleDetail";
+import NotFound from "./pages/NotFound";
 
 export const router = createBrowserRouter([
   { path: "/login", Component: Login },
@@ -15,4 +16,5 @@ export const router = createBrowserRouter([
   { path: "/issues/:id", Component: IssueDetail },
   { path: "/articles/:id", Component: ArticleDetail },
   { path: "/", Component: Home },
+  { path: "*", Component: NotFound },
 ]);
