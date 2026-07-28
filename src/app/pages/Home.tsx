@@ -429,7 +429,7 @@ function ContributorsSection({ authors }: { authors: Author[] }) {
     });
 
   const renderMember = (author: Author) => (
-    <div key={author.id} className="w-full max-w-60 mx-auto text-center group flex flex-col items-center">
+    <div key={author.id} className="w-full max-w-48 mx-auto text-center group flex flex-col items-center">
       <div className="w-24 h-24 shrink-0 rounded-full overflow-hidden mb-3 ring-2 ring-border group-hover:ring-accent transition-all bg-muted">
         {author.avatarUrl ? (
           <img src={author.avatarUrl} alt={author.displayName} loading="lazy" decoding="async" className="w-full h-full object-cover" />
@@ -437,8 +437,8 @@ function ContributorsSection({ authors }: { authors: Author[] }) {
           <div className="w-full h-full flex items-center justify-center text-2xl font-display text-primary">{author.displayName.slice(0, 1).toUpperCase()}</div>
         )}
       </div>
-      <div className="min-h-12 flex items-start justify-center text-foreground text-base leading-6 font-display font-semibold">{author.displayName}</div>
-      <div className="min-h-5 text-muted-foreground text-xs font-body">{author.bio}</div>
+      <div className="whitespace-nowrap text-foreground text-xs sm:text-sm md:text-base leading-tight font-display font-semibold">{author.displayName}</div>
+      <div className="text-muted-foreground text-xs mt-1 font-body">{author.bio}</div>
     </div>
   );
 
@@ -457,7 +457,7 @@ function ContributorsSection({ authors }: { authors: Author[] }) {
                 {renderMember(leadership[0])}
               </div>
               {leadership.length > 1 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-start gap-x-8 gap-y-10 max-w-5xl mx-auto">
+                <div className="grid grid-cols-2 sm:grid-cols-4 items-start gap-x-4 gap-y-10 max-w-5xl mx-auto">
                   {leadership.slice(1).map(renderMember)}
                 </div>
               )}
@@ -467,7 +467,7 @@ function ContributorsSection({ authors }: { authors: Author[] }) {
           {technicalMembers.length > 0 && (
             <div>
               <h3 className="text-center text-xl font-display font-bold text-foreground mb-8">Technical Members</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-start gap-x-8 gap-y-10 max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-x-6 gap-y-10 max-w-4xl mx-auto">
                 {technicalMembers.map(renderMember)}
               </div>
             </div>
