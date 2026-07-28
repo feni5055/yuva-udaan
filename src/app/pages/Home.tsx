@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useTheme, useLang, useAuth } from "../AppContext";
+import aisarTanimBarbhuiyaPhoto from "../../imports/aisar-tanim-barbhuiya.jpeg";
 import {
   listAuthors,
   listCategories,
@@ -418,8 +419,12 @@ function ContributorsSection({ authors }: { authors: Author[] }) {
   const technicalMembers = authors
     .filter((author) => !author.bio.toLowerCase().includes("leader"))
     .sort((a, b) => {
-      const roleRank = (role: string) => role.toLowerCase() === "technical head" ? 0 : 1;
-      return roleRank(a.bio) - roleRank(b.bio) || a.displayName.localeCompare(b.displayName);
+      const technicalOrder = ["fenil muneer v p", "aisar tanim barbhuiya"];
+      const rank = (name: string) => {
+        const index = technicalOrder.indexOf(name.toLowerCase());
+        return index === -1 ? technicalOrder.length : index;
+      };
+      return rank(a.displayName) - rank(b.displayName) || a.displayName.localeCompare(b.displayName);
     });
 
   const renderMember = (author: Author) => (
@@ -606,7 +611,17 @@ export default function Home() {
     };
   }, []);
 
-  const teamMembers = authors.filter((author) => author.bio.trim().length > 0);
+  const databaseTeamMembers = authors.filter((author) => author.bio.trim().length > 0);
+  const teamMembers: Author[] = [
+    ...databaseTeamMembers.filter((author) => author.displayName.toLowerCase() !== "aisar tanim barbhuiya"),
+    {
+      id: "team-aisar-tanim-barbhuiya",
+      profileId: null,
+      displayName: "Aisar Tanim Barbhuiya",
+      bio: "Frontend Developer",
+      avatarUrl: aisarTanimBarbhuiyaPhoto,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
