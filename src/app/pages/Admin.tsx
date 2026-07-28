@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { CheckCircle2, ExternalLink, LoaderCircle, RefreshCw, ShieldCheck, Trash2, Undo2 } from "lucide-react";
 import { useAuth } from "../AppContext";
 import {
+  deleteComment,
   deleteMagazine,
   getAdminData,
   getMagazinePdfLink,
@@ -273,13 +274,32 @@ export default function Admin() {
               <div className="space-y-3">
                 {data.comments.map((comment) => (
                   <div key={comment.id} className="border border-border bg-card p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                    <p className="flex-1 text-sm font-body whitespace-pre-wrap">{comment.body}</p>
+                    <div className="flex-1">
+                      <p className="text-sm font-body whitespace-pre-wrap">{comment.body}</p>
+                      <p className="text-xs text-muted-foreground font-body mt-2">
+                        {data.profiles.find((profile) => profile.id === comment.profileId)?.fullName || "Member"}
+                        {comment.magazineId
+                          ? ` · ${data.magazines.find((magazine) => magazine.id === comment.magazineId)?.title || "Magazine"}`
+                          : " · Article comment"}
+                      </p>
+                    </div>
                     <button
                       type="button"
                       onClick={() => void mutate(() => updateCommentApproval(comment.id, !comment.isApproved), "Comment moderation updated.")}
                       className={`px-3 py-2 text-sm font-body ${comment.isApproved ? "border border-border" : "bg-primary text-primary-foreground"}`}
                     >
                       {comment.isApproved ? "Unapprove" : "Approve"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm("Delete this comment permanently?")) {
+                          void mutate(() => deleteComment(comment.id), "Comment deleted.");
+                        }
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 border border-destructive/40 text-destructive px-3 py-2 text-sm font-body hover:bg-destructive/10"
+                    >
+                      <Trash2 size={14} /> Delete
                     </button>
                   </div>
                 ))}

@@ -70,11 +70,16 @@ create table if not exists public.articles (
 
 create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
-  article_id uuid not null references public.articles(id) on delete cascade,
+  article_id uuid references public.articles(id) on delete cascade,
+  magazine_id uuid references public.magazines(id) on delete cascade,
   profile_id uuid not null references public.profiles(id) on delete cascade,
   body text not null check (char_length(body) between 1 and 2000),
   is_approved boolean not null default false,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint comments_one_parent_check check (
+    (article_id is not null and magazine_id is null)
+    or (article_id is null and magazine_id is not null)
+  )
 );
 
 create table if not exists public.contact_messages (
@@ -93,6 +98,7 @@ create index if not exists articles_magazine_id_idx on public.articles(magazine_
 create index if not exists articles_category_id_idx on public.articles(category_id);
 create index if not exists articles_status_idx on public.articles(status);
 create index if not exists comments_article_id_idx on public.comments(article_id);
+create index if not exists comments_magazine_id_idx on public.comments(magazine_id);
 
 create or replace function private.is_admin()
 returns boolean

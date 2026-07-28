@@ -53,7 +53,8 @@ export interface Article {
 
 export interface Comment {
   id: string;
-  articleId: string;
+  articleId: string | null;
+  magazineId: string | null;
   profileId: string;
   body: string;
   isApproved: boolean;
@@ -372,13 +373,32 @@ export async function getArticle(id: string): Promise<Article | null> {
 export async function listComments(articleId: string): Promise<Comment[]> {
   const { data, error } = await supabase
     .from("comments")
-    .select("id, article_id, profile_id, body, is_approved, created_at")
+    .select("id, article_id, magazine_id, profile_id, body, is_approved, created_at")
     .eq("article_id", articleId)
     .order("created_at");
   if (error) throw error;
   return (data ?? []).map((row) => ({
     id: row.id,
     articleId: row.article_id,
+    magazineId: row.magazine_id,
+    profileId: row.profile_id,
+    body: row.body,
+    isApproved: row.is_approved,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function listMagazineComments(magazineId: string): Promise<Comment[]> {
+  const { data, error } = await supabase
+    .from("comments")
+    .select("id, article_id, magazine_id, profile_id, body, is_approved, created_at")
+    .eq("magazine_id", magazineId)
+    .order("created_at");
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    articleId: row.article_id,
+    magazineId: row.magazine_id,
     profileId: row.profile_id,
     body: row.body,
     isApproved: row.is_approved,
@@ -393,6 +413,22 @@ export async function submitComment(articleId: string, profileId: string, body: 
     body: body.trim(),
     is_approved: false,
   });
+  if (error) throw error;
+}
+
+export async function submitMagazineComment(magazineId: string, profileId: string, body: string): Promise<void> {
+  const { error } = await supabase.from("comments").insert({
+    article_id: null,
+    magazine_id: magazineId,
+    profile_id: profileId,
+    body: body.trim(),
+    is_approved: false,
+  });
+  if (error) throw error;
+}
+
+export async function deleteComment(id: string): Promise<void> {
+  const { error } = await supabase.from("comments").delete().eq("id", id);
   if (error) throw error;
 }
 
@@ -428,7 +464,7 @@ export async function getAdminData(): Promise<AdminData> {
     supabase.from("categories").select("id, name, slug, description").order("name"),
     supabase.from("magazines").select("*").order("created_at", { ascending: false }),
     supabase.from("articles").select("*").order("created_at", { ascending: false }),
-    supabase.from("comments").select("id, article_id, profile_id, body, is_approved, created_at").order("created_at", { ascending: false }),
+    supabase.from("comments").select("id, article_id, magazine_id, profile_id, body, is_approved, created_at").order("created_at", { ascending: false }),
     supabase.from("contact_messages").select("*").order("created_at", { ascending: false }),
   ]);
 
@@ -461,6 +497,7 @@ export async function getAdminData(): Promise<AdminData> {
     comments: (comments.data ?? []).map((row) => ({
       id: row.id,
       articleId: row.article_id,
+      magazineId: row.magazine_id,
       profileId: row.profile_id,
       body: row.body,
       isApproved: row.is_approved,
