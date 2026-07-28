@@ -420,7 +420,7 @@ function ContributorsSection({ authors }: { authors: Author[] }) {
   const technicalMembers = authors
     .filter((author) => !author.bio.toLowerCase().includes("leader"))
     .sort((a, b) => {
-      const technicalOrder = ["fenil muneer v p", "aisar tanim barbhuiya", "shainu"];
+      const technicalOrder = ["aisar tanim barbhuiya", "fenil muneer v p", "shainu"];
       const rank = (name: string) => {
         const index = technicalOrder.indexOf(name.toLowerCase());
         return index === -1 ? technicalOrder.length : index;
