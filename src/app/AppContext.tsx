@@ -52,7 +52,7 @@ const T: Record<string, Record<Lang, string>> = {
   // ── Hero ──
   "hero.eyebrow":       { en: "The Club Magazine",      hi: "क्लब की पत्रिका" },
   "hero.line1":         { en: "Welcome to",             hi: "में आपका स्वागत है" },
-  "hero.line2":         { en: "Hindi Club",             hi: "हिंदी क्लब" },
+  "hero.line2":         { en: "Yuva Kalam",             hi: "युवा कलम" },
   "hero.line3":         { en: "Magazine",               hi: "पत्रिका" },
   "hero.desc":          { en: "Celebrating Hindi language and literature through poetry, short stories, essays, and cultural features — written by club members and published each semester.", hi: "कविता, लघुकथा, निबंध और सांस्कृतिक लेखों के माध्यम से हिंदी भाषा और साहित्य का उत्सव — क्लब के सदस्यों द्वारा लिखित और प्रत्येक सेमेस्टर में प्रकाशित।" },
   "hero.cta":           { en: "Explore Magazines",      hi: "अंक देखें" },
