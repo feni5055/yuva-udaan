@@ -6,6 +6,7 @@ import {
 import { useNavigate } from "react-router";
 import { useTheme, useLang, useAuth } from "../AppContext";
 import aisarTanimBarbhuiyaPhoto from "../../imports/aisar-tanim-barbhuiya.jpeg";
+import shainuPhoto from "../../imports/shainu-ui-ux-designer.jpeg";
 import {
   listAuthors,
   listCategories,
@@ -419,7 +420,7 @@ function ContributorsSection({ authors }: { authors: Author[] }) {
   const technicalMembers = authors
     .filter((author) => !author.bio.toLowerCase().includes("leader"))
     .sort((a, b) => {
-      const technicalOrder = ["fenil muneer v p", "aisar tanim barbhuiya"];
+      const technicalOrder = ["fenil muneer v p", "aisar tanim barbhuiya", "shainu"];
       const rank = (name: string) => {
         const index = technicalOrder.indexOf(name.toLowerCase());
         return index === -1 ? technicalOrder.length : index;
@@ -613,13 +614,20 @@ export default function Home() {
 
   const databaseTeamMembers = authors.filter((author) => author.bio.trim().length > 0);
   const teamMembers: Author[] = [
-    ...databaseTeamMembers.filter((author) => author.displayName.toLowerCase() !== "aisar tanim barbhuiya"),
+    ...databaseTeamMembers.filter((author) => !["aisar tanim barbhuiya", "shainu"].includes(author.displayName.toLowerCase())),
     {
       id: "team-aisar-tanim-barbhuiya",
       profileId: null,
       displayName: "Aisar Tanim Barbhuiya",
       bio: "Frontend Developer",
       avatarUrl: aisarTanimBarbhuiyaPhoto,
+    },
+    {
+      id: "team-shainu",
+      profileId: null,
+      displayName: "Shainu",
+      bio: "UI/UX Designer",
+      avatarUrl: shainuPhoto,
     },
   ];
 
