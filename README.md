@@ -1,13 +1,4 @@
-
-# Magazine website design
-
-This is a code bundle for Magazine website design. The original project is available at https://www.figma.com/design/eybxSa13A2fcDj3aMoY4Kj/Magazine-website-design.
-
-## Running the code
-
-1. Copy .env.example to .env and set values (see below).
-2. Run `npm i` to install dependencies.
-3. Run `npm run dev` to start the development server.
+]
 
 ## Environment
 
