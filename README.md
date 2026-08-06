@@ -1,5 +1,3 @@
-]
-
 ## Environment
 
 Copy `.env.example` to `.env.local` for local development. Supabase uses the
